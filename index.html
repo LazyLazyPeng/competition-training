@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>竞赛训练系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* ============ CSS 变量 ============ */
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.2s ease;
+        }
+
+        /* ============ 基础样式 ============ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ============ 顶部导航 ============ */
+        .navbar {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .navbar-brand .icon { font-size: 28px; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+        }
+
+        .nav-tab {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+        .nav-tab.active { background: var(--card-bg); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+        .nav-actions { display: flex; gap: 8px; align-items: center; }
+
+        .question-count {
+            font-size: 13px;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            background: var(--bg);
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* ============ 按钮样式 ============ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+        .btn-success:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1.5px solid var(--primary);
+        }
+        .btn-outline:hover { background: var(--primary); color: #fff; }
+
+        .btn-danger-outline {
+            background: transparent;
+            color: var(--danger);
+            border: 1.5px solid var(--danger);
+        }
+        .btn-danger-outline:hover { background: var(--danger); color: #fff; }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid transparent;
+        }
+        .btn-danger:hover { background: #fef2f2; }
+
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        .btn-lg { padding: 14px 32px; font-size: 16px; }
+
+        .btn-random {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: #fff;
+            font-size: 20px;
+            font-weight: 700;
+            padding: 18px 48px;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            animation: pulse-glow 2s infinite;
+        }
+        .btn-random:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(239, 68, 68, 0.45);
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 4px 30px rgba(239, 68, 68, 0.55); }
+        }
+
+        /* ============ 主容器 ============ */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .page { display: none; }
+        .page.active { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============ 统计卡片 ============ */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+        .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* ============ 筛选区域 ============ */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .filter-bar label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .filter-pill {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .filter-pill:hover { border-color: var(--primary-light); color: var(--primary); }
+        .filter-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        /* ============ 题目卡片网格 ============ */
+        .questions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .question-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .question-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary);
+            border-radius: 0 2px 2px 0;
+            opacity: 0;
+            transition: var(--transition);
+        }
+        .question-card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-3px);
+            border-color: var(--primary-light);
+        }
+        .question-card:hover::before { opacity: 1; }
+
+        .question-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .question-card .card-id {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .question-card .card-volume {
+            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .card-volume.vol-up { background: #dbeafe; color: #1d4ed8; }
+        .card-volume.vol-down { background: #dcfce7; color: #15803d; }
+
+        .question-card .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .question-card .card-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+
+        .question-card .card-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .question-card .card-tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            color: var(--text-secondary);
+        }
+
+        /* ============ 随机抽题区域 ============ */
+        .random-section {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .random-section h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .random-section .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 15px;
+        }
+
+        .random-options {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .random-result {
+            margin-top: 32px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .random-result-card {
+            display: inline-block;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 32px 40px;
+            box-shadow: var(--shadow-lg);
+            text-align: left;
+            min-width: 360px;
+        }
+
+        .random-result-card .result-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .random-result-card .result-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .result-info .info-item label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .result-info .info-item span {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* ============ 详情页面 ============ */
+        .detail-layout {
+            display: flex;
+            gap: 20px;
+            min-height: calc(100vh - 140px);
+        }
+
+        .detail-sidebar {
+            width: 340px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            width: fit-content;
+        }
+        .detail-back:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .detail-info-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .detail-info-card .detail-title-main {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.4;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-info-card .detail-meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .detail-info-card .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .detail-info-card .meta-label {
+            color: var(--text-muted);
+            font-size: 13px;
+            min-width: 56px;
+            flex-shrink: 0;
+        }
+        .detail-info-card .meta-value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .detail-badge {
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-green { background: #dcfce7; color: #15803d; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
+        .badge-purple { background: #ede9fe; color: #6d28d9; }
+
+        .detail-tags-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .detail-actions-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .detail-actions-card .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .detail-actions-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .detail-pdf-wrapper {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .detail-pdf-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            flex-shrink: 0;
+        }
+        .detail-pdf-header span {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .detail-pdf-body {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            background: #525659;
+        }
+        .detail-pdf-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .detail-pdf-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        /* ============ 管理后台 ============ */
+        .admin-toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .admin-table-wrap {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .admin-table th {
+            background: var(--bg);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .admin-table td {
+            padding: 12px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .admin-table tr:hover td { background: #f8fafc; }
+        .admin-table tr:last-child td { border-bottom: none; }
+
+        .admin-table .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .inline-edit-input {
+            padding: 6px 10px;
+            border: 1.5px solid var(--border);
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+        }
+        .inline-edit-input:focus { border-color: var(--primary); }
+
+        /* ============ 表单样式 ============ */
+        .form-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .form-card h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+
+        /* ============ Toast 提示 ============ */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            animation: slideInRight 0.3s ease;
+            max-width: 380px;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--primary); }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ============ 空状态 ============ */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 15px; }
+
+        /* ============ 响应式 ============ */
+        @media (max-width: 768px) {
+            .navbar { padding: 0 12px; }
+            .navbar-brand { font-size: 16px; }
+            .nav-tab { padding: 6px 12px; font-size: 13px; }
+            .questions-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .random-result-card { min-width: auto; width: 100%; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .btn-random { font-size: 16px; padding: 14px 32px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .detail-layout { flex-direction: column; }
+            .detail-sidebar { width: 100%; }
+            .detail-pdf-wrapper { min-height: 60vh; }
+        }
+
+        /* ============ 滚动条美化 ============ */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ============ 数据导入导出按钮 ============ */
+        .import-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
+            color: var(--text-muted);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .import-zone:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+            background: #f0f4ff;
+        }
+
+        /* ============ 导航栏导入按钮 ============ */
+        .btn-import-nav {
+            font-size: 12px;
+            padding: 5px 12px;
+            border: 1.5px dashed var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-import-nav:hover {
+            border-color: var(--primary-light);
+            color: var(--primary);
+            background: #eff6ff;
+        }
+
+        /* ============ 欢迎 / 空状态引导 ============ */
+        .welcome-section {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .welcome-section .welcome-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .welcome-section h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        .welcome-section p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin: 0 auto 24px;
+            line-height: 1.7;
+        }
+        .welcome-section .welcome-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============ 顶部导航栏 ============ -->
+    <nav class="navbar">
+        <div class="navbar-brand" onclick="switchPage('browse')">
+            <span class="icon">🏆</span>
+            <span>竞赛训练系统</span>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
+            <button class="nav-tab" data-page="random" onclick="switchPage('random')">🎲 随机抽题</button>
+            <button class="nav-tab" data-page="admin" onclick="switchPage('admin')">⚙️ 管理后台</button>
+        </div>
+        <div class="nav-actions">
+            <span class="question-count" id="totalCount">共 0 题</span>
+            <label class="btn-import-nav" title="从 ZIP 文件导入题目包（含 PDF）" id="navImportBtn">
+                📤 导入题目包
+                <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)" id="navImportInput">
+            </label>
+        </div>
+    </nav>
+
+    <!-- ============ Toast 容器 ============ -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ============ 主内容区域 ============ -->
+    <div class="container">
+
+        <!-- 页面1：题库浏览 -->
+        <div class="page active" id="page-browse">
+            <!-- 统计卡片 -->
+            <div class="stats-row" id="statsRow"></div>
+
+            <!-- 筛选栏 -->
+            <div class="filter-bar">
+                <label>📂 卷册：</label>
+                <button class="filter-pill active" data-volume="all" onclick="filterQuestions('all', this)">全部</button>
+                <button class="filter-pill" data-volume="上册" onclick="filterQuestions('上册', this)">📘 上册</button>
+                <button class="filter-pill" data-volume="下册" onclick="filterQuestions('下册', this)">📗 下册</button>
+                <button class="filter-pill" data-volume="扩展" onclick="filterQuestions('扩展', this)">📙 扩展</button>
+                <span style="width:1px;height:24px;background:var(--border);margin:0 4px;"></span>
+                <label>📑 篇目：</label>
+                <button class="filter-pill section-pill" data-section="all" onclick="filterBySection('all', this)">全部</button>
+                <button class="filter-pill section-pill" data-section="基础篇" onclick="filterBySection('基础篇', this)">基础篇</button>
+                <button class="filter-pill section-pill" data-section="进阶篇" onclick="filterBySection('进阶篇', this)">进阶篇</button>
+                <button class="filter-pill section-pill" data-section="竞赛篇" onclick="filterBySection('竞赛篇', this)">竞赛篇</button>
+                <button class="filter-pill section-pill" data-section="创新篇" onclick="filterBySection('创新篇', this)">创新篇</button>
+                <input type="text" class="search-input" placeholder="🔍  搜索题目名称..." id="searchInput" oninput="filterQuestions()">
+            </div>
+
+            <!-- 题目卡片网格 -->
+            <div class="questions-grid" id="questionsGrid"></div>
+        </div>
+
+        <!-- 页面2：随机抽题 -->
+        <div class="page" id="page-random">
+            <div class="random-section">
+                <h2>🎲 随机抽取竞赛题目</h2>
+                <p class="subtitle">点击按钮随机抽取一道题目，开始你的竞赛训练！</p>
+
+                <div class="random-options">
+                    <button class="filter-pill active" data-random-volume="all" onclick="setRandomVolume('all', this)">全部题目</button>
+                    <button class="filter-pill" data-random-volume="上册" onclick="setRandomVolume('上册', this)">上册</button>
+                    <button class="filter-pill" data-random-volume="下册" onclick="setRandomVolume('下册', this)">下册</button>
+                    <span style="width:1px;height:24px;background:var(--border);margin:0 4px;"></span>
+                    <button class="filter-pill" data-random-volume="基础篇" onclick="setRandomVolume('基础篇', this)">基础篇</button>
+                    <button class="filter-pill" data-random-volume="进阶篇" onclick="setRandomVolume('进阶篇', this)">进阶篇</button>
+                    <button class="filter-pill" data-random-volume="竞赛篇" onclick="setRandomVolume('竞赛篇', this)">竞赛篇</button>
+                    <button class="filter-pill" data-random-volume="创新篇" onclick="setRandomVolume('创新篇', this)">创新篇</button>
+                </div>
+
+                <button class="btn btn-random" onclick="randomPick()">
+                    🎯 随机抽题
+                </button>
+
+                <div class="random-result" id="randomResult" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 页面3：管理后台 -->
+        <div class="page" id="page-admin">
+            <div class="admin-toolbar">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="showAddForm()">＋ 新增题目</button>
+                    <button class="btn btn-success" onclick="exportFullPackage()">📦 导出完整包 (ZIP)</button>
+                    <button class="btn btn-outline" onclick="exportData()" style="font-size:12px;">📄 仅导出 JSON</button>
+                    <label class="btn btn-primary" style="cursor:pointer;background:#7c3aed;">
+                        📥 导入完整包 (ZIP)
+                        <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
+                    </label>
+                    <label class="btn btn-outline" style="cursor:pointer;font-size:12px;">
+                        📤 导入 JSON
+                        <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
+                    </label>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="resetData()">🔄 恢复默认数据</button>
+                <button class="btn btn-outline btn-sm" onclick="manageDBFiles()">🗄️ 管理数据库</button>
+                <button class="btn btn-outline btn-sm" onclick="cleanOrphanFiles()" title="删除未被任何题目引用的 PDF 和练习数据文件">🧹 清理孤立文件</button>
+                <button class="btn btn-outline btn-sm btn-danger-outline" onclick="clearAllQuestions()" title="清空全部题目数据（PDF 保留在数据库中）">🗑️ 清空所有题目</button>
+            </div>
+
+            <!-- 新增/编辑表单 -->
+            <div class="form-card" id="editFormCard" style="display:none;">
+                <h3 id="formTitle">新增题目</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>题目ID</label>
+                        <input type="text" id="editId" placeholder="v1-01" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>题目名称 *</label>
+                        <input type="text" id="editTitle" placeholder="输入题目名称">
+                    </div>
+                    <div class="form-group">
+                        <label>所属卷册 *</label>
+                        <select id="editVolume">
+                            <option value="上册">上册</option>
+                            <option value="下册">下册</option>
+                            <option value="扩展">扩展</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>所属篇目</label>
+                        <select id="editSection">
+                            <option value="">-- 不指定 --</option>
+                            <option value="基础篇">基础篇</option>
+                            <option value="进阶篇">进阶篇</option>
+                            <option value="竞赛篇">竞赛篇</option>
+                            <option value="创新篇">创新篇</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>章节号</label>
+                        <input type="number" id="editChapter" placeholder="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>章节标题</label>
+                        <input type="text" id="editChapterTitle" placeholder="输入章节标题">
+                    </div>
+                    <div class="form-group">
+                        <label>书籍页码（原书页码）</label>
+                        <input type="number" id="editBookPage" placeholder="书籍页码 P183" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>📄 PDF 页码（若为现有PDF，直接指定）</label>
+                        <input type="number" id="editPdfPage" placeholder="PDF 实际页码" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>上传 PDF 文件 📎</label>
+                        <input type="file" id="editPdfFile" accept=".pdf" onchange="onPdfFileSelected()" style="padding:8px 0;">
+                        <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
+                            上传后自动存储到浏览器数据库，导出时一并打包
+                        </span>
+                        <span id="pdfFileStatus" style="font-size:11px;color:var(--success);display:none;">✅ PDF 已选择</span>
+                    </div>
+                </div>
+                <div style="border:1px dashed var(--border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;background:var(--bg);">
+                    <div style="font-weight:600;margin-bottom:8px;font-size:14px;">📐 PDF 页码映射（自动计算）</div>
+                    <div class="form-grid" style="margin-bottom:0;">
+                        <div class="form-group">
+                            <label>PDF 文件名</label>
+                            <input type="text" id="editPdfFileName" placeholder="如：上册.pdf 或 自定义.pdf">
+                        </div>
+                        <div class="form-group">
+                            <label>偏移量（PDF页 = 书籍页 + 偏移）</label>
+                            <input type="number" id="editPdfOffset" value="7" min="0" oninput="autoCalcPdfPage()">
+                            <span style="font-size:11px;color:var(--text-muted);">上册通常为 7，下册为 8</span>
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);" id="pdfMappingPreview"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>练习数据文件名</label>
+                        <input type="text" id="editPracticeFile" placeholder="v1-01.txt">
+                    </div>
+                    <div class="form-group">
+                        <label>难度</label>
+                        <select id="editDifficulty">
+                            <option value="简单">简单</option>
+                            <option value="中等" selected>中等</option>
+                            <option value="困难">困难</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>标签（逗号分隔）</label>
+                        <input type="text" id="editTags" placeholder="三维建模, 可视化">
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-primary" onclick="saveQuestion()">💾 保存</button>
+                    <button class="btn btn-outline" onclick="cancelEdit()">取消</button>
+                </div>
+            </div>
+
+            <!-- 题目表格 -->
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>题目名称</th>
+                            <th>卷册</th>
+                            <th>篇目</th>
+                            <th>章节</th>
+                            <th>PDF页码</th>
+                            <th>难度</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 导入区域 -->
+            <div class="import-zone" style="margin-top:20px;">
+                <p>📂 点击上方「导入完整包」按钮加载 ZIP，或「导入 JSON」按钮加载 JSON</p>
+                <p style="font-size:12px;color:var(--text-muted);">ZIP 包中可包含 questions.json + book/*.pdf + practice-data/*</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============ 页面4：题目详情 ============ -->
+    <div class="page" id="page-detail">
+        <div class="detail-layout">
+            <!-- 左侧信息栏 -->
+            <div class="detail-sidebar">
+                <button class="detail-back" onclick="closeDetail()">
+                    ← 返回题库
+                </button>
+
+                <div class="detail-info-card">
+                    <div class="detail-title-main" id="detailTitle">题目名称</div>
+                    <div class="detail-meta-list">
+                        <div class="meta-row">
+                            <span class="meta-label">📂 卷册</span>
+                            <span class="detail-badge badge-blue" id="detailVolumeBadge">上册</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">📑 篇目</span>
+                            <span class="detail-badge" id="detailSectionBadge" style="display:none;">基础篇</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">📖 章节</span>
+                            <span class="meta-value" id="detailChapter">第X章</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">📄 PDF</span>
+                            <span class="meta-value" id="detailPdfInfo">第 X 页</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">📊 难度</span>
+                            <span class="meta-value" id="detailDifficulty">中等</span>
+                        </div>
+                        <div class="meta-row" id="detailTagsRow" style="display:none;">
+                            <span class="meta-label">🏷️ 标签</span>
+                            <span class="detail-tags-row" id="detailTags"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作区 -->
+                <div class="detail-actions-card">
+                    <div class="section-title">⚡ 操作</div>
+                    <button class="btn btn-primary" id="detailDownloadBtn" onclick="downloadDetailPractice()" style="display:none;">
+                        📥 下载练习数据
+                    </button>
+                    <button class="btn btn-outline" id="detailRandomBtn" onclick="randomPickFromDetail()">
+                        🎲 随机抽题
+                    </button>
+                    <!-- 预留扩展功能区 -->
+                    <div class="section-title" style="margin-top:6px;">🔧 扩展功能</div>
+                    <span style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px;">更多功能即将上线...</span>
+                </div>
+            </div>
+
+            <!-- 右侧 PDF 查看区 -->
+            <div class="detail-pdf-wrapper">
+                <div class="detail-pdf-header">
+                    <span id="detailPdfFileName">测绘程序设计（上册）.pdf</span>
+                    <span style="font-size:12px;color:var(--text-muted);" id="detailPdfPageTag">第 X 页</span>
+                </div>
+                <div class="detail-pdf-body">
+                    <div class="detail-pdf-loading" id="pdfLoading">⏳ 正在加载 PDF...</div>
+                    <iframe id="pdfIframe" src="" style="display:none;" onload="onPdfLoaded()"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ 全局状态 ============
+        const STORAGE_KEY = 'competition_questions_v4';
+        const DEFAULT_DATA_URL = 'questions.json';
+
+        let questions = [];
+        let currentFilter = 'all';
+        let currentSection = 'all';
+        let currentSearch = '';
+        let randomVolume = 'all';
+        let editingId = null;
+
+        // ============ 数据加载 ============
+        async function loadData() {
+            // 优先从 localStorage 加载
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    questions = JSON.parse(stored);
+                    if (questions.length > 0) {
+                        renderAll();
+                        return;
+                    }
+                } catch (e) {}
+            }
+
+            // 从 JSON 文件加载默认数据
+            try {
+                const resp = await fetch(DEFAULT_DATA_URL);
+                if (resp.ok) {
+                    questions = await resp.json();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+                }
+            } catch (e) {
+                console.warn('无法加载默认数据，使用空数据');
+                questions = [];
+            }
+            renderAll();
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        }
+
+        // ============ IndexedDB 存储（PDF + 练习数据） ============
+        const DB_NAME = 'competition_files_db';
+        const DB_VERSION = 1;
+        let dbReady = null;
+
+        function openDB() {
+            if (dbReady) return dbReady;
+            dbReady = new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('files')) {
+                        db.createObjectStore('files', { keyPath: 'name' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+            return dbReady;
+        }
+
+        async function dbPutFile(name, blob, type) {
+            const db = await openDB();
+            console.log('💾 dbPutFile:', name, '| size:', (blob.size / 1024 / 1024).toFixed(1) + 'MB', '| type:', type);
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                const store = tx.objectStore('files');
+                store.put({ name, blob, type, addedAt: Date.now() });
+                tx.oncomplete = () => { console.log('  ✅ 写入完成:', name); resolve(); };
+                tx.onerror = () => { console.error('  ❌ 写入失败:', name, tx.error); reject(tx.error); };
+            });
+        }
+
+        async function dbGetFile(name) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readonly');
+                const store = tx.objectStore('files');
+                const req = store.get(name);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbHasFile(name) {
+            const f = await dbGetFile(name);
+            return !!f;
+        }
+
+        async function dbGetAllFileNames() {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readonly');
+                const store = tx.objectStore('files');
+                const req = store.getAllKeys();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function dbDeleteFile(name) {
+            const db = await openDB();
+            console.log('🗑️ dbDeleteFile:', name);
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('files', 'readwrite');
+                const store = tx.objectStore('files');
+                store.delete(name);
+                tx.oncomplete = () => { console.log('  ✅ 已删除:', name); resolve(); };
+                tx.onerror = () => { console.error('  ❌ 删除失败:', name, tx.error); reject(tx.error); };
+            });
+        }
+
+        // 🔧 调试工具：在控制台输入 __debugShowDB() 查看 IndexedDB 中所有文件
+        window.__debugShowDB = async function() {
+            const names = await dbGetAllFileNames();
+            console.group('🗄️ IndexedDB 状态');
+            console.log('  数据库:', DB_NAME, 'v' + DB_VERSION);
+            console.log('  文件数:', names.length);
+            if (names.length > 0) {
+                for (const name of names) {
+                    const entry = await dbGetFile(name);
+                    const size = entry ? (entry.blob.size / 1024 / 1024).toFixed(1) + 'MB' : '?';
+                    const refs = getFileReferences(name);
+                    console.log(`    ${refs.length > 0 ? '📎' : '🗑️'} ${name} — ${size} — ${refs.length > 0 ? '被 ' + refs.length + ' 题引用' : '孤立'}`);
+                }
+            }
+            console.log('  题目数:', questions.length);
+            console.log('  被引用文件:', [...getReferencedFiles()]);
+            console.groupEnd();
+        };
+
+        // 🔧 调试工具：在控制台输入 __debugTestPdf() 快速测 PDF 加载
+        window.__debugTestPdf = async function(questionId) {
+            if (!questionId) {
+                const q = questions[0];
+                if (!q) { console.log('没有题目'); return; }
+                questionId = q.id;
+            }
+            console.log('手动测试 PDF 加载，题目:', questionId);
+            const q = questions.find(x => x.id === questionId);
+            if (!q) { console.log('未找到题目'); return; }
+            console.log('  题目:', q.title, '| PDF:', q.pdfFileName, '| Page:', q.pdfPage);
+            const hasDB = await dbHasFile(q.pdfFileName);
+            console.log('  DB 存在?', hasDB);
+            if (hasDB) {
+                const url = await dbGetFileUrl(q.pdfFileName);
+                console.log('  Blob URL:', url);
+                console.log('  尝试加载...');
+                const iframe = document.getElementById('pdfIframe');
+                iframe.src = url + '#page=' + q.pdfPage;
+                iframe.style.display = '';
+            } else {
+                const names = await dbGetAllFileNames();
+                console.log('  DB 中所有文件:', names);
+            }
+        };
+
+        // 为 db 文件创建 blob URL（用于 iframe）
+        async function dbGetFileUrl(name) {
+            console.log('🔗 dbGetFileUrl:', name);
+            const entry = await dbGetFile(name);
+            if (!entry) { console.log('  ⚠️ 未找到文件:', name); return null; }
+            // IndexedDB 序列化后 Blob 的 MIME type 会丢失，需要用存储的 type 重新创建 Blob
+            const blob = entry.type ? new Blob([entry.blob], { type: entry.type }) : entry.blob;
+            const url = URL.createObjectURL(blob);
+            console.log('  📎 Blob 已创建, size:', (blob.size / 1024 / 1024).toFixed(1) + 'MB, type:', blob.type);
+            return url;
+        }
+
+        // ============ 页面切换 ============
+        let prevPage = 'browse';  // 记录上一页，用于详情页返回
+
+        function switchPage(page) {
+            prevPage = getCurrentPage();
+
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+            const pageEl = document.getElementById('page-' + page);
+            if (pageEl) pageEl.classList.add('active');
+
+            const tab = document.querySelector(`.nav-tab[data-page="${page}"]`);
+            if (tab) tab.classList.add('active');
+
+            // 详情页不在导航中，清除所有 tab 高亮
+            if (page === 'detail') {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            }
+
+            if (page === 'browse') renderBrowse();
+            if (page === 'random') renderRandom();
+            if (page === 'admin') renderAdmin();
+        }
+
+        function getCurrentPage() {
+            const active = document.querySelector('.page.active');
+            if (active) return active.id.replace('page-', '');
+            return 'browse';
+        }
+
+        // ============ 渲染所有 ============
+        function renderAll() {
+            document.getElementById('totalCount').textContent = `共 ${questions.length} 题`;
+            const activePage = document.querySelector('.page.active');
+            if (!activePage) return;
+            if (activePage.id === 'page-browse') renderBrowse();
+            if (activePage.id === 'page-random') renderRandom();
+            if (activePage.id === 'page-admin') renderAdmin();
+        }
+
+        // ============ 题库浏览 ============
+        function renderBrowse() {
+            renderStats();
+            renderQuestionCards();
+        }
+
+        function renderStats() {
+            const total = questions.length;
+            const jichu = questions.filter(q => q.section === '基础篇').length;
+            const jinjie = questions.filter(q => q.section === '进阶篇').length;
+            const jingsai = questions.filter(q => q.section === '竞赛篇').length;
+            const chuangxin = questions.filter(q => q.section === '创新篇').length;
+
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${total}</div>
+                    <div class="stat-label">📦 题目总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${jichu}</div>
+                    <div class="stat-label">📘 基础篇（上册）</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${jinjie}</div>
+                    <div class="stat-label">📗 进阶篇（下册）</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${jingsai}</div>
+                    <div class="stat-label">🏅 竞赛篇（下册）</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${chuangxin}</div>
+                    <div class="stat-label">💡 创新篇（下册）</div>
+                </div>
+            `;
+        }
+
+        function filterQuestions(volume, btn) {
+            if (volume !== undefined) {
+                currentFilter = volume;
+                document.querySelectorAll('#page-browse .filter-pill:not(.section-pill)').forEach(p => p.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+            }
+            currentSearch = document.getElementById('searchInput').value.toLowerCase();
+            renderQuestionCards();
+        }
+
+        function filterBySection(section, btn) {
+            if (section !== undefined) {
+                currentSection = section;
+                document.querySelectorAll('#page-browse .section-pill').forEach(p => p.classList.remove('active'));
+                if (btn) btn.classList.add('active');
+            }
+            renderQuestionCards();
+        }
+
+        function setRandomVolume(volume, btn) {
+            randomVolume = volume;
+            document.querySelectorAll('#page-random .filter-pill').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        }
+
+        function renderQuestionCards() {
+            const grid = document.getElementById('questionsGrid');
+            let filtered = questions;
+
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(q => q.volume === currentFilter);
+            }
+            if (currentSection !== 'all') {
+                filtered = filtered.filter(q => q.section === currentSection);
+            }
+            if (currentSearch) {
+                filtered = filtered.filter(q =>
+                    q.title.toLowerCase().includes(currentSearch) ||
+                    q.chapterTitle.toLowerCase().includes(currentSearch) ||
+                    (q.tags && q.tags.some(t => t.toLowerCase().includes(currentSearch)))
+                );
+            }
+
+            // 没有任何题目数据 — 显示欢迎引导
+            if (questions.length === 0) {
+                grid.innerHTML = `<div class="welcome-section" style="grid-column:1/-1;">
+                    <div class="welcome-icon">📚</div>
+                    <h2>还没有题目数据</h2>
+                    <p>点击导航栏右上角的 <strong>📤 导入题目包</strong> 按钮，<br>加载包含题目和 PDF 的 ZIP 文件即可开始使用。</p>
+                    <div class="welcome-actions">
+                        <label class="btn btn-primary" style="cursor:pointer;">
+                            📤 导入题目包 (ZIP)
+                            <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
+                        </label>
+                        <button class="btn btn-outline" onclick="switchPage('admin')">⚙️ 管理后台</button>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-muted);margin-top:20px;">
+                        也可前往管理后台手动添加题目，或从其他设备导出的 ZIP 包导入
+                    </p>
+                </div>`;
+                return;
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+                    <div class="empty-icon">📭</div>
+                    <p>没有找到匹配的题目</p>
+                </div>`;
+                return;
+            }
+
+            // 按章节排序
+            filtered.sort((a, b) => a.chapter - b.chapter);
+
+            grid.innerHTML = filtered.map(q => {
+                const volClass = q.volume === '上册' ? 'vol-up' : 'vol-down';
+                const volIcon = q.volume === '上册' ? '📘' : '📗';
+                const sectionColorMap = { '基础篇': '#3b82f6', '进阶篇': '#10b981', '竞赛篇': '#f59e0b', '创新篇': '#8b5cf6' };
+                const sectionColor = sectionColorMap[q.section] || '#64748b';
+                const tagsHtml = q.tags ? q.tags.map(t => `<span class="tag">${t}</span>`).join('') : '';
+                return `
+                <div class="question-card" onclick="showDetail('${q.id}')">
+                    <div class="card-header">
+                        <span class="card-id"># 第${q.chapter}章</span>
+                        <span class="card-volume ${volClass}">${volIcon} ${q.volume}</span>
+                    </div>
+                    <div class="card-title">${q.title}</div>
+                    <div class="card-meta">
+                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:1px 8px;border-radius:10px;background:${sectionColor}15;color:${sectionColor};font-weight:600;">${q.section || ''}</span>
+                        <span>📄 PDF 第${q.pdfPage}页</span>
+                        <span>📊 ${q.difficulty || '中等'}</span>
+                    </div>
+                    ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        // ============ 题目详情页面 ============
+        let currentDetailId = null;
+
+        async function showDetail(id) {
+            const q = questions.find(q => q.id === id);
+            if (!q) {
+                console.warn('[详情] 未找到题目:', id);
+                return;
+            }
+
+            console.group('🔍 打开题目详情:', q.id, q.title);
+            console.log('  PDF 文件名:', q.pdfFileName);
+            console.log('  PDF 页码:', q.pdfPage);
+            console.log('  题目总数:', questions.length);
+
+            currentDetailId = id;
+
+            // --- 信息卡片 ---
+            document.getElementById('detailTitle').textContent = `第${q.chapter}章 ${q.title}`;
+
+            const volBadge = document.getElementById('detailVolumeBadge');
+            volBadge.textContent = q.volume === '上册' ? '📘 上册' : q.volume === '下册' ? '📗 下册' : `📙 ${q.volume}`;
+            volBadge.className = 'detail-badge ' + (q.volume === '上册' ? 'badge-blue' : 'badge-green');
+
+            const secBadge = document.getElementById('detailSectionBadge');
+            const sectionColorMap = { '基础篇': 'badge-blue', '进阶篇': 'badge-green', '竞赛篇': 'badge-orange', '创新篇': 'badge-purple' };
+            if (q.section) {
+                secBadge.textContent = q.section;
+                secBadge.className = 'detail-badge ' + (sectionColorMap[q.section] || 'badge-blue');
+                secBadge.style.display = '';
+            } else {
+                secBadge.style.display = 'none';
+            }
+
+            document.getElementById('detailChapter').textContent = `第${q.chapter}章 · ${q.chapterTitle}`;
+            document.getElementById('detailPdfInfo').textContent = `第 ${q.pdfPage} 页`;
+            if (q.bookPage) {
+                document.getElementById('detailPdfInfo').textContent += `（书籍 P${q.bookPage}）`;
+            }
+            document.getElementById('detailDifficulty').textContent = q.difficulty || '中等';
+
+            // 标签
+            const tagsRow = document.getElementById('detailTagsRow');
+            const tagsEl = document.getElementById('detailTags');
+            if (q.tags && q.tags.length > 0) {
+                tagsRow.style.display = '';
+                tagsEl.innerHTML = q.tags.map(t => `<span class="tag" style="font-size:12px;">${t}</span>`).join('');
+            } else {
+                tagsRow.style.display = 'none';
+            }
+
+            // --- 操作按钮 ---
+            const downloadBtn = document.getElementById('detailDownloadBtn');
+            if (q.practiceDataFile) {
+                downloadBtn.style.display = '';
+                downloadBtn.onclick = () => downloadPractice(q.id);
+            } else {
+                downloadBtn.style.display = 'none';
+            }
+
+            // --- PDF 区域 ---
+            document.getElementById('detailPdfFileName').textContent = q.pdfFileName;
+            document.getElementById('detailPdfPageTag').textContent = `第 ${q.pdfPage} 页`;
+
+            const pdfIframe = document.getElementById('pdfIframe');
+            const pdfLoading = document.getElementById('pdfLoading');
+
+            // 清理上一次的状态：取消待处理的 closeDetail 延时 + 加载超时
+            if (window.__closeDetailTimer) { clearTimeout(window.__closeDetailTimer); window.__closeDetailTimer = null; }
+            if (window.__pdfLoadTimer) { clearTimeout(window.__pdfLoadTimer); window.__pdfLoadTimer = null; }
+            // 释放上一次的 blob URL，避免内存泄漏
+            if (window.__currentPdfBlobUrl) { URL.revokeObjectURL(window.__currentPdfBlobUrl); window.__currentPdfBlobUrl = null; }
+
+            pdfIframe.style.display = 'none';
+            pdfLoading.style.display = 'flex';
+            pdfLoading.textContent = '⏳ 正在加载 PDF...';
+
+            // 优先从 IndexedDB 加载，其次从 book/ 文件夹
+            let pdfUrl = null;
+            let fromDb = false;
+            try {
+                const t0 = performance.now();
+                const hasDB = await dbHasFile(q.pdfFileName);
+                console.log('  DB 中存在?', hasDB, `(耗时 ${(performance.now() - t0).toFixed(0)}ms)`);
+                if (hasDB) {
+                    const t1 = performance.now();
+                    pdfUrl = await dbGetFileUrl(q.pdfFileName);
+                    console.log('  Blob URL:', pdfUrl?.substring(0, 55) + '...', `(耗时 ${(performance.now() - t1).toFixed(0)}ms)`);
+                    window.__currentPdfBlobUrl = pdfUrl;
+                    fromDb = true;
+                    pdfLoading.textContent = '⏳ 从数据库加载 PDF...';
+                }
+            } catch (e) {
+                console.error('  ❌ DB 加载失败:', e);
+            }
+
+            if (!pdfUrl) {
+                pdfUrl = `book/${encodeURIComponent(q.pdfFileName)}#page=${q.pdfPage}`;
+                console.log('  📂 回退到本地文件:', 'book/' + q.pdfFileName);
+            } else {
+                pdfUrl += `#page=${q.pdfPage}`;
+                console.log('  📦 使用 DB URL + 页码');
+            }
+
+            console.log('  最终 URL:', pdfUrl.substring(0, 80) + '...');
+            console.log('  设置 iframe.src...');
+            pdfIframe.src = pdfUrl;
+            console.log('  iframe 当前状态 — display:', pdfIframe.style.display, '| src 已设置:', pdfIframe.src.substring(0, 80) + '...');
+
+            // 兜底定时器：如果 onload 未在合理时间内触发（Chrome PDF 查看器有时不触发 iframe onload），
+            // 强制隐藏加载状态，避免用户看到永久 loading
+            const timeoutMs = fromDb ? 8000 : 4000;
+            console.log('  ⏱ 设置超时兜底:', timeoutMs + 'ms');
+            window.__pdfLoadTimer = setTimeout(() => {
+                const loading = document.getElementById('pdfLoading');
+                const iframe = document.getElementById('pdfIframe');
+                if (loading && loading.style.display !== 'none') {
+                    loading.style.display = 'none';
+                    iframe.style.display = '';
+                    console.warn('⏰ PDF 加载超时，已强制显示（如有问题请刷新页面）');
+                } else {
+                    console.log('⏰ 超时触发但 loading 已隐藏（onload 已先触发）');
+                }
+                window.__pdfLoadTimer = null;
+            }, timeoutMs);
+
+            // 切换到详情页
+            switchPage('detail');
+            console.groupEnd();
+        }
+
+        function onPdfLoaded() {
+            console.log('✅ onPdfLoaded 触发！iframe 加载完成');
+            // 清除超时兜底
+            if (window.__pdfLoadTimer) { clearTimeout(window.__pdfLoadTimer); window.__pdfLoadTimer = null; console.log('  ⏱ 已取消超时兜底'); }
+            document.getElementById('pdfLoading').style.display = 'none';
+            document.getElementById('pdfIframe').style.display = '';
+            console.log('  loading 已隐藏，iframe 已显示');
+        }
+
+        function closeDetail() {
+            // 清除超时兜底定时器
+            if (window.__pdfLoadTimer) { clearTimeout(window.__pdfLoadTimer); window.__pdfLoadTimer = null; }
+            currentDetailId = null;
+            // 返回上一页
+            const targetPage = prevPage || 'browse';
+            switchPage(targetPage);
+            // 延迟清除 iframe 并释放 blob URL
+            window.__closeDetailTimer = setTimeout(() => {
+                const pdfIframe = document.getElementById('pdfIframe');
+                if (!currentDetailId) {
+                    pdfIframe.src = '';
+                    if (window.__currentPdfBlobUrl) {
+                        URL.revokeObjectURL(window.__currentPdfBlobUrl);
+                        window.__currentPdfBlobUrl = null;
+                    }
+                }
+                window.__closeDetailTimer = null;
+            }, 300);
+        }
+
+        function downloadDetailPractice() {
+            if (currentDetailId) downloadPractice(currentDetailId);
+        }
+
+        function randomPickFromDetail() {
+            const savedPrevPage = prevPage;
+            closeDetail();
+            switchPage('random');
+            prevPage = savedPrevPage;
+            randomPick();
+        }
+
+        // ESC 返回
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && getCurrentPage() === 'detail') {
+                closeDetail();
+            }
+        });
+
+        // ============ 下载练习数据 ============
+        function downloadPractice(id) {
+            const q = questions.find(q => q.id === id);
+            if (!q || !q.practiceDataFile) {
+                showToast('该题目暂无练习数据', 'error');
+                return;
+            }
+
+            const filePath = `practice-data/${q.practiceDataFile}`;
+
+            // 尝试从服务器加载
+            fetch(filePath)
+                .then(resp => {
+                    if (!resp.ok) throw new Error('文件不存在');
+                    return resp.text();
+                })
+                .then(text => {
+                    triggerDownload(q.practiceDataFile, text);
+                })
+                .catch(() => {
+                    // 如果文件不存在，生成一个占位文件
+                    const placeholder = `# ${q.title} - 练习数据
+# ================================
+# 卷册: ${q.volume}
+# 章节: 第${q.chapter}章 ${q.chapterTitle}
+# PDF页码: 第${q.pdfPage}页
+#
+# 请将实际练习数据放入 practice-data/${q.practiceDataFile}
+`;
+                    triggerDownload(q.practiceDataFile, placeholder);
+                    showToast('练习数据文件不存在，已下载占位模板', 'info');
+                });
+        }
+
+        function triggerDownload(filename, content) {
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`已下载: ${filename}`, 'success');
+        }
+
+        // ============ 随机抽题 ============
+        function renderRandom() {
+            const resultDiv = document.getElementById('randomResult');
+            if (questions.length === 0) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<div class="welcome-section" style="padding:40px 20px;">
+                    <div class="welcome-icon">🎲</div>
+                    <h2>暂无题目可供抽取</h2>
+                    <p>请先导入题目数据</p>
+                    <div class="welcome-actions">
+                        <label class="btn btn-primary" style="cursor:pointer;">
+                            📤 导入题目包 (ZIP)
+                            <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
+                        </label>
+                    </div>
+                </div>`;
+                return;
+            }
+            resultDiv.style.display = 'none';
+        }
+
+        function randomPick() {
+            let pool = questions;
+            // randomVolume 可以是卷册名或篇目名
+            if (randomVolume !== 'all') {
+                const volumeMatch = pool.filter(q => q.volume === randomVolume);
+                if (volumeMatch.length > 0) {
+                    pool = volumeMatch;
+                } else {
+                    pool = pool.filter(q => q.section === randomVolume);
+                }
+            }
+            if (pool.length === 0) {
+                showToast('没有可抽取的题目', 'error');
+                return;
+            }
+
+            // 添加抽取动画延迟
+            const resultDiv = document.getElementById('randomResult');
+            resultDiv.style.display = 'none';
+
+            // 快速闪烁几个题目名制造抽题效果
+            let count = 0;
+            const maxCount = 20;
+            const interval = setInterval(() => {
+                const randQ = pool[Math.floor(Math.random() * pool.length)];
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <div class="random-result-card" style="border-color:var(--border);opacity:0.6;">
+                        <div class="result-title" style="color:var(--text-secondary);">🎰 抽取中...</div>
+                        <div style="font-size:18px;font-weight:600;">${randQ.title}</div>
+                    </div>`;
+                count++;
+                if (count >= maxCount) {
+                    clearInterval(interval);
+                    // 最终结果
+                    const selected = pool[Math.floor(Math.random() * pool.length)];
+                    resultDiv.innerHTML = `
+                        <div class="random-result-card">
+                            <div class="result-title">🎉 抽中题目</div>
+                            <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:16px;">${selected.title}</div>
+                            <div class="result-info">
+                                <div class="info-item">
+                                    <label>📂 卷册</label>
+                                    <span>${selected.volume}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>📖 章节</label>
+                                    <span>第${selected.chapter}章</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>📄 PDF 页码</label>
+                                    <span>第${selected.pdfPage}页</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>📊 难度</label>
+                                    <span>${selected.difficulty || '中等'}</span>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:12px;">
+                                <button class="btn btn-primary" onclick="showDetail('${selected.id}')">查看详情</button>
+                                <button class="btn btn-outline" onclick="downloadPractice('${selected.id}')">📥 下载数据</button>
+                                <button class="btn btn-outline" onclick="randomPick()">🔄 再抽一次</button>
+                            </div>
+                        </div>`;
+                }
+            }, 80);
+        }
+
+        // ============ 管理后台 ============
+        let pendingPdfFile = null;  // 暂存待上传的 PDF 文件
+
+        function renderAdmin() {
+            const tbody = document.getElementById('adminTableBody');
+
+            if (questions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted);">
+                    暂无题目，点击「新增题目」开始添加</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = questions.map(q => `
+                <tr>
+                    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:12px;">${q.id}</code></td>
+                    <td><strong>${q.title}</strong></td>
+                    <td>${q.volume}</td>
+                    <td><span style="font-size:12px;padding:2px 8px;border-radius:10px;background:var(--bg);">${q.section || '-'}</span></td>
+                    <td>第${q.chapter}章</td>
+                    <td>第${q.pdfPage}页${q.bookPage ? `<span style="font-size:11px;color:var(--text-muted);">（书P${q.bookPage}）</span>` : ''}</td>
+                    <td><span style="font-size:12px;padding:2px 8px;border-radius:12px;background:${q.difficulty==='困难'?'#fef2f2':q.difficulty==='简单'?'#f0fdf4':'#fefce8'};color:${q.difficulty==='困难'?'#dc2626':q.difficulty==='简单'?'#16a34a':'#ca8a04'};">${q.difficulty||'中等'}</span></td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn btn-outline btn-sm" onclick="editQuestion('${q.id}')">✏️ 编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${q.id}')">🗑️ 删除</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function showAddForm() {
+            editingId = null;
+            pendingPdfFile = null;
+            document.getElementById('formTitle').textContent = '新增题目';
+            document.getElementById('editId').value = '';
+            document.getElementById('editId').removeAttribute('readonly');
+            document.getElementById('editTitle').value = '';
+            document.getElementById('editVolume').value = '上册';
+            document.getElementById('editSection').value = '';
+            document.getElementById('editChapter').value = questions.length + 1;
+            document.getElementById('editChapterTitle').value = '';
+            document.getElementById('editBookPage').value = '';
+            document.getElementById('editPdfPage').value = '';
+            document.getElementById('editPdfFile').value = '';
+            document.getElementById('pdfFileStatus').style.display = 'none';
+            document.getElementById('editPdfFileName').value = '测绘程序设计（上册）.pdf';
+            document.getElementById('editPdfOffset').value = '7';
+            document.getElementById('editPracticeFile').value = '';
+            document.getElementById('editDifficulty').value = '中等';
+            document.getElementById('editTags').value = '';
+            document.getElementById('pdfMappingPreview').textContent = '';
+            document.getElementById('editFormCard').style.display = 'block';
+            document.getElementById('editFormCard').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('editTitle').focus();
+        }
+
+        function editQuestion(id) {
+            const q = questions.find(q => q.id === id);
+            if (!q) return;
+
+            editingId = id;
+            pendingPdfFile = null;
+            document.getElementById('formTitle').textContent = '编辑题目';
+            document.getElementById('editId').value = q.id;
+            document.getElementById('editId').setAttribute('readonly', 'readonly');
+            document.getElementById('editTitle').value = q.title;
+            document.getElementById('editVolume').value = q.volume;
+            document.getElementById('editSection').value = q.section || '';
+            document.getElementById('editChapter').value = q.chapter;
+            document.getElementById('editChapterTitle').value = q.chapterTitle;
+            document.getElementById('editBookPage').value = q.bookPage || '';
+            document.getElementById('editPdfPage').value = q.pdfPage;
+            document.getElementById('editPdfFile').value = '';
+            document.getElementById('pdfFileStatus').style.display = 'none';
+            document.getElementById('editPdfFileName').value = q.pdfFileName;
+            document.getElementById('editPdfOffset').value = q.pdfOffset || (q.volume === '上册' ? 7 : 8);
+            document.getElementById('editPracticeFile').value = q.practiceDataFile || '';
+            document.getElementById('editDifficulty').value = q.difficulty || '中等';
+            document.getElementById('editTags').value = q.tags ? q.tags.join(', ') : '';
+            autoCalcPdfPage();
+            document.getElementById('editFormCard').style.display = 'block';
+            document.getElementById('editFormCard').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            pendingPdfFile = null;
+            document.getElementById('editFormCard').style.display = 'none';
+        }
+
+        // PDF 文件选择
+        function onPdfFileSelected() {
+            const fileInput = document.getElementById('editPdfFile');
+            const statusEl = document.getElementById('pdfFileStatus');
+            const nameEl = document.getElementById('editPdfFileName');
+
+            if (fileInput.files && fileInput.files[0]) {
+                pendingPdfFile = fileInput.files[0];
+                statusEl.style.display = 'block';
+                statusEl.textContent = `✅ PDF 已选择: ${pendingPdfFile.name} (${(pendingPdfFile.size / 1024 / 1024).toFixed(1)} MB)`;
+
+                // 自动填入文件名
+                nameEl.value = pendingPdfFile.name;
+            } else {
+                pendingPdfFile = null;
+                statusEl.style.display = 'none';
+            }
+        }
+
+        // PDF 页码自动计算
+        function autoCalcPdfPage() {
+            const bookPage = parseInt(document.getElementById('editBookPage').value) || 0;
+            const offset = parseInt(document.getElementById('editPdfOffset').value) || 0;
+            const previewEl = document.getElementById('pdfMappingPreview');
+
+            if (bookPage > 0 && offset >= 0) {
+                const pdfPage = bookPage + offset;
+                document.getElementById('editPdfPage').value = pdfPage;
+                previewEl.textContent = `📐 书籍 P${bookPage} + 偏移 ${offset} = PDF 第 ${pdfPage} 页`;
+            } else {
+                previewEl.textContent = '';
+            }
+        }
+
+        async function saveQuestion() {
+            const id = editingId || document.getElementById('editId').value.trim();
+            const title = document.getElementById('editTitle').value.trim();
+            const volume = document.getElementById('editVolume').value;
+            const section = document.getElementById('editSection').value.trim();
+            const chapter = parseInt(document.getElementById('editChapter').value) || 1;
+            const chapterTitle = document.getElementById('editChapterTitle').value.trim();
+            const bookPage = parseInt(document.getElementById('editBookPage').value) || 0;
+            const pdfPage = parseInt(document.getElementById('editPdfPage').value) || 1;
+            const pdfOffset = parseInt(document.getElementById('editPdfOffset').value) || 0;
+            const pdfFileName = document.getElementById('editPdfFileName').value.trim() || `${volume}.pdf`;
+            const practiceFile = document.getElementById('editPracticeFile').value.trim();
+            const difficulty = document.getElementById('editDifficulty').value;
+            const tagsStr = document.getElementById('editTags').value.trim();
+            const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
+
+            if (!id || !title) {
+                showToast('题目ID和名称不能为空', 'error');
+                return;
+            }
+
+            // 检查 ID 是否重复（新增时）
+            if (!editingId && questions.some(q => q.id === id)) {
+                showToast('题目ID已存在，请使用其他ID', 'error');
+                return;
+            }
+
+            // 如果有上传的 PDF 文件，存储到 IndexedDB
+            if (pendingPdfFile) {
+                try {
+                    showToast('正在存储 PDF 到数据库...', 'info');
+                    await dbPutFile(pdfFileName, pendingPdfFile, 'application/pdf');
+                    showToast(`PDF "${pdfFileName}" 已存储到数据库`, 'success');
+                } catch (err) {
+                    showToast('PDF 存储失败: ' + err.message, 'error');
+                }
+                pendingPdfFile = null;
+            }
+
+            const questionData = {
+                id,
+                title,
+                volume,
+                section: section || '',
+                chapter,
+                chapterTitle: chapterTitle || `第${chapter}章`,
+                bookPage: bookPage || 0,
+                pdfPage,
+                pdfOffset,
+                pdfFileName,
+                practiceDataFile: practiceFile || '',
+                tags,
+                difficulty
+            };
+
+            if (editingId) {
+                const idx = questions.findIndex(q => q.id === editingId);
+                if (idx !== -1) {
+                    questions[idx] = questionData;
+                    showToast('题目已更新', 'success');
+                }
+            } else {
+                questions.push(questionData);
+                showToast('题目已添加', 'success');
+            }
+
+            saveData();
+            cancelEdit();
+            renderAll();
+        }
+
+        // ============ 文件引用管理 ============
+        function getPDFReferenceCount(pdfFileName) {
+            if (!pdfFileName) return 0;
+            return questions.filter(q => q.pdfFileName === pdfFileName).length;
+        }
+
+        function getPracticeDataRefCount(dataFileName) {
+            if (!dataFileName) return 0;
+            return questions.filter(q => q.practiceDataFile === dataFileName).length;
+        }
+
+        /** 列出所有被题目引用的文件（去重） */
+        function getReferencedFiles() {
+            const refs = new Set();
+            questions.forEach(q => {
+                if (q.pdfFileName) refs.add(q.pdfFileName);
+                if (q.practiceDataFile) refs.add(q.practiceDataFile);
+            });
+            return refs;
+        }
+
+        /** 找出 IndexedDB 中未被任何题目引用的孤立文件 */
+        async function getOrphanFiles() {
+            const fileNames = await dbGetAllFileNames();
+            const refs = getReferencedFiles();
+            return fileNames.filter(name => !refs.has(name));
+        }
+
+        /** 列出引用了某文件的所有题目 ID */
+        function getFileReferences(fileName) {
+            const ids = [];
+            questions.forEach(q => {
+                if (q.pdfFileName === fileName || q.practiceDataFile === fileName) {
+                    ids.push(q.id);
+                }
+            });
+            return ids;
+        }
+
+        function deleteQuestion(id) {
+            const target = questions.find(q => q.id === id);
+            if (!target) return;
+
+            let extraMsg = '';
+            let orphanFiles = [];
+
+            // 检查关联文件是否被其他题目引用
+            if (target.pdfFileName) {
+                const refCount = getPDFReferenceCount(target.pdfFileName);
+                if (refCount <= 1) {
+                    orphanFiles.push(`📄 PDF: ${target.pdfFileName}`);
+                }
+            }
+            if (target.practiceDataFile) {
+                const refCount = getPracticeDataRefCount(target.practiceDataFile);
+                if (refCount <= 1) {
+                    orphanFiles.push(`📊 数据: ${target.practiceDataFile}`);
+                }
+            }
+            if (orphanFiles.length > 0) {
+                extraMsg = `\n\n⚠️ 以下文件仅被本题引用，删除后将孤立：\n${orphanFiles.join('\n')}\n建议稍后使用「清理孤立文件」删除它们。`;
+            }
+
+            if (!confirm(`确定要删除题目 "${id}" 吗？此操作不可恢复。${extraMsg}`)) return;
+
+            const deletedPdfFile = (getPDFReferenceCount(target.pdfFileName) <= 1) ? target.pdfFileName : null;
+            const deletedDataFile = (getPracticeDataRefCount(target.practiceDataFile) <= 1) ? target.practiceDataFile : null;
+
+            questions = questions.filter(q => q.id !== id);
+            saveData();
+            renderAll();
+
+            // 异步清理孤立文件（如果用户同意）
+            if (deletedPdfFile || deletedDataFile) {
+                const parts = [];
+                if (deletedPdfFile) parts.push(`PDF「${deletedPdfFile}」`);
+                if (deletedDataFile) parts.push(`数据文件「${deletedDataFile}」`);
+                const cleanMsg = parts.join('和');
+
+                // 用 setTimeout 避免 confirm 阻塞 IndexedDB 操作
+                setTimeout(async () => {
+                    if (confirm(`${cleanMsg}\n已无题目引用，是否同时从数据库中删除？`)) {
+                        try {
+                            if (deletedPdfFile) await dbDeleteFile(deletedPdfFile);
+                            if (deletedDataFile) await dbDeleteFile(deletedDataFile);
+                            showToast(`已清理孤立文件: ${cleanMsg}`, 'success');
+                        } catch (err) {
+                            showToast('清理文件失败: ' + err.message, 'error');
+                        }
+                    }
+                }, 100);
+            }
+
+            showToast(`已删除题目: ${id}`, 'info');
+        }
+
+        // ============ 导出 ============
+        function exportData() {
+            const json = JSON.stringify(questions, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const timestamp = new Date().toISOString().slice(0, 10);
+            a.download = `questions-backup-${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('JSON 已导出（不含 PDF）', 'success');
+        }
+
+        // 导出完整包（ZIP 含 JSON + PDF + 练习数据）
+        async function exportFullPackage() {
+            if (typeof JSZip === 'undefined') {
+                showToast('正在加载 JSZip 库，请稍后重试...', 'error');
+                return;
+            }
+
+            showToast('正在打包导出数据...', 'info');
+
+            try {
+                const zip = new JSZip();
+
+                // 1. 打包 questions.json
+                zip.file('questions.json', JSON.stringify(questions, null, 2));
+
+                // 2. 收集所有 PDF 文件名（去重）
+                const pdfSet = new Set();
+                const practiceSet = new Set();
+                questions.forEach(q => {
+                    if (q.pdfFileName) pdfSet.add(q.pdfFileName);
+                    if (q.practiceDataFile) practiceSet.add(q.practiceDataFile);
+                });
+
+                // 3. 打包 IndexedDB 中的 PDF
+                let pdfCount = 0;
+                for (const pdfName of pdfSet) {
+                    try {
+                        const entry = await dbGetFile(pdfName);
+                        if (entry) {
+                            zip.folder('book').file(pdfName, entry.blob);
+                            pdfCount++;
+                        }
+                    } catch (e) { /* 不在 DB 中 */ }
+                }
+
+                // 4. 打包练习数据文件
+                let practiceCount = 0;
+                for (const pfName of practiceSet) {
+                    try {
+                        const entry = await dbGetFile(pfName);
+                        if (entry) {
+                            zip.folder('practice-data').file(pfName, entry.blob);
+                            practiceCount++;
+                        }
+                    } catch (e) { /* 不在 DB 中 */ }
+                }
+
+                // 5. 尝试从 book/ 文件夹加载未在 DB 中的 PDF
+                for (const pdfName of pdfSet) {
+                    try {
+                        const hasFile = zip.file('book/' + pdfName);
+                        if (!hasFile) {
+                            const resp = await fetch(`book/${encodeURIComponent(pdfName)}`);
+                            if (resp.ok) {
+                                const blob = await resp.blob();
+                                zip.folder('book').file(pdfName, blob);
+                                pdfCount++;
+                            }
+                        }
+                    } catch (e) { /* 无法获取 */ }
+                }
+
+                // 生成 ZIP 并下载
+                const blob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const timestamp = new Date().toISOString().slice(0, 10);
+                a.download = `competition-full-backup-${timestamp}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast(`完整包已导出 → ${questions.length} 题 + ${pdfCount} PDF + ${practiceCount} 数据文件`, 'success');
+            } catch (err) {
+                showToast('导出失败: ' + err.message, 'error');
+                console.error(err);
+            }
+        }
+
+        // ============ 导入 ============
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data)) throw new Error('数据格式错误');
+
+                    if (!confirm(`即将导入 ${data.length} 道题目，这将覆盖当前所有数据。确定继续？`)) return;
+
+                    questions = data;
+                    saveData();
+                    renderAll();
+                    showToast(`成功导入 ${data.length} 道题目`, 'success');
+                } catch (err) {
+                    showToast('导入失败：JSON 格式不正确', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // 导入完整包（ZIP）
+        async function importFullPackage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof JSZip === 'undefined') {
+                showToast('正在加载 JSZip 库，请稍后重试...', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            console.group('📥 导入完整包');
+            showToast('正在解析 ZIP 包...', 'info');
+            console.log('  ZIP 文件大小:', (file.size / 1024 / 1024).toFixed(1) + 'MB');
+
+            try {
+                const tLoad = performance.now();
+                const zip = await JSZip.loadAsync(file);
+                console.log('  ZIP 解析耗时:', (performance.now() - tLoad).toFixed(0) + 'ms');
+
+                // 1. 解析 questions.json
+                const jsonFile = zip.file('questions.json');
+                if (!jsonFile) {
+                    showToast('ZIP 包中未找到 questions.json', 'error');
+                    event.target.value = '';
+                    return;
+                }
+
+                const jsonText = await jsonFile.async('text');
+                const data = JSON.parse(jsonText);
+                if (!Array.isArray(data)) throw new Error('数据格式错误');
+                console.log('  questions.json:', data.length, '题');
+
+                // 2. 统计文件
+                const pdfFiles = [];
+                const practiceFiles = [];
+                zip.forEach((relativePath, zipEntry) => {
+                    if (zipEntry.dir) return;
+                    if (relativePath.startsWith('book/') && relativePath.endsWith('.pdf')) {
+                        pdfFiles.push(relativePath.replace('book/', ''));
+                    } else if (relativePath.startsWith('practice-data/')) {
+                        practiceFiles.push(relativePath.replace('practice-data/', ''));
+                    }
+                });
+                console.log('  PDF 文件:', pdfFiles.length, '个 →', pdfFiles);
+                console.log('  练习数据:', practiceFiles.length, '个');
+
+                const parts = [];
+                parts.push(`即将导入完整包：`);
+                parts.push(`  📋 ${data.length} 道题目`);
+                if (pdfFiles.length > 0) parts.push(`  📄 ${pdfFiles.length} 个 PDF 文件`);
+                if (practiceFiles.length > 0) parts.push(`  📊 ${practiceFiles.length} 个练习数据文件`);
+                parts.push('');
+                parts.push('导入后将覆盖当前题目数据，并存储文件到浏览器数据库。确定继续？');
+
+                if (!confirm(parts.join('\n'))) { event.target.value = ''; return; }
+
+                // 3. 导入 PDF 到 IndexedDB
+                let pdfImported = 0;
+                const tPdf = performance.now();
+                for (const pdfName of pdfFiles) {
+                    try {
+                        const entry = zip.file('book/' + pdfName);
+                        if (entry) {
+                            const blob = await entry.async('blob');
+                            console.log(`  📄 导入 PDF [${pdfImported + 1}/${pdfFiles.length}]:`, pdfName, '|', (blob.size / 1024 / 1024).toFixed(1) + 'MB');
+                            await dbPutFile(pdfName, blob, 'application/pdf');
+                            pdfImported++;
+                        }
+                    } catch (e) {
+                        console.warn('无法导入 PDF:', pdfName, e);
+                    }
+                }
+
+                // 4. 导入练习数据到 IndexedDB
+                let practiceImported = 0;
+                for (const pfName of practiceFiles) {
+                    try {
+                        const entry = zip.file('practice-data/' + pfName);
+                        if (entry) {
+                            const blob = await entry.async('blob');
+                            await dbPutFile(pfName, blob, 'text/plain');
+                            practiceImported++;
+                        }
+                    } catch (e) {
+                        console.warn('无法导入数据文件:', pfName, e);
+                    }
+                }
+
+                // 5. 导入题目数据
+                questions = data;
+                saveData();
+                renderAll();
+
+                const totalTime = (performance.now() - tLoad).toFixed(0);
+                console.log('  ⏱ 总耗时:', totalTime + 'ms');
+                console.log('  ✅ 导入完成 →', data.length + '题 +', pdfImported + 'PDF +', practiceImported + '数据');
+                console.groupEnd();
+
+                showToast(`导入完成 → ${data.length} 题 + ${pdfImported} PDF + ${practiceImported} 数据文件`, 'success');
+            } catch (err) {
+                console.error('❌ 导入失败:', err);
+                console.groupEnd();
+                showToast('导入失败: ' + err.message, 'error');
+            }
+
+            event.target.value = '';
+            // 同时清除导航栏导入按钮的文件选择
+            const navInput = document.getElementById('navImportInput');
+            if (navInput && navInput !== event.target) navInput.value = '';
+        }
+
+        function resetData() {
+            if (!confirm('确定要恢复为默认数据吗？当前所有修改将丢失。\n\n注意：IndexedDB 中的 PDF 不会自动删除。')) return;
+
+            localStorage.removeItem(STORAGE_KEY);
+            fetch(DEFAULT_DATA_URL)
+                .then(resp => resp.json())
+                .then(data => {
+                    questions = data;
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+                    renderAll();
+                    showToast('已恢复默认数据', 'success');
+                })
+                .catch(() => {
+                    showToast('恢复失败：无法加载默认数据', 'error');
+                });
+        }
+
+        // 管理数据库文件
+        async function manageDBFiles() {
+            try {
+                const fileNames = await dbGetAllFileNames();
+                if (fileNames.length === 0) {
+                    showToast('数据库中没有存储的文件', 'info');
+                    return;
+                }
+
+                const refs = getReferencedFiles();
+                const orphans = fileNames.filter(n => !refs.has(n));
+
+                let fileList = fileNames.map((name, i) => {
+                    const tag = refs.has(name) ? '📎' : '🗑️';
+                    const desc = refs.has(name) ? `(被 ${getFileReferences(name).length} 题引用)` : '(孤立)';
+                    return `  ${i + 1}. ${tag} ${name} ${desc}`;
+                }).join('\n');
+
+                const action = prompt(
+                    `当前存储了 ${fileNames.length} 个文件 (${orphans.length} 个孤立):\n\n${fileList}\n\n操作:\n- 输入文件名删除（仅允许删孤立文件）\n- 输入 "clean" 一键清理所有孤立文件\n- 输入 "download:文件名" 下载\n- 取消返回`,
+                    ''
+                );
+
+                if (!action) return;
+
+                if (action.toLowerCase() === 'clean') {
+                    if (orphans.length === 0) { showToast('没有孤立文件可清理', 'info'); return; }
+                    if (!confirm(`确定清理所有 ${orphans.length} 个孤立文件？\n\n${orphans.map(n => '  · ' + n).join('\n')}`)) return;
+                    for (const name of orphans) await dbDeleteFile(name);
+                    showToast(`已清理 ${orphans.length} 个孤立文件`, 'success');
+                } else if (action.startsWith('download:')) {
+                    const downloadName = action.substring('download:'.length).trim();
+                    const entry = await dbGetFile(downloadName);
+                    if (entry) {
+                        const url = URL.createObjectURL(entry.blob);
+                        const a = document.createElement('a');
+                        a.href = url; a.download = downloadName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        showToast(`已下载: ${downloadName}`, 'success');
+                    } else {
+                        showToast(`未找到文件: ${downloadName}`, 'error');
+                    }
+                } else if (fileNames.includes(action)) {
+                    // 检查是否被引用
+                    const refIds = getFileReferences(action);
+                    if (refIds.length > 0) {
+                        showToast(`❌ 文件「${action}」正被 ${refIds.length} 道题目引用，无法删除。\n请先删除关联题目：${refIds.join(', ')}`, 'error');
+                        return;
+                    }
+                    await dbDeleteFile(action);
+                    showToast(`已删除: ${action}`, 'success');
+                } else {
+                    showToast('无效操作', 'error');
+                }
+            } catch (err) {
+                showToast('数据库操作失败: ' + err.message, 'error');
+            }
+        }
+
+        /** 一键清理孤立文件（供按钮直接调用） */
+        async function cleanOrphanFiles() {
+            try {
+                const orphans = await getOrphanFiles();
+                if (orphans.length === 0) {
+                    showToast('✅ 没有孤立文件，数据库很干净', 'info');
+                    return;
+                }
+                if (!confirm(`发现 ${orphans.length} 个孤立文件，确定清理？\n\n${orphans.map(n => '  · ' + n).join('\n')}`)) return;
+                for (const name of orphans) await dbDeleteFile(name);
+                showToast(`已清理 ${orphans.length} 个孤立文件`, 'success');
+            } catch (err) {
+                showToast('清理失败: ' + err.message, 'error');
+            }
+        }
+
+        /** 清空所有题目 */
+        async function clearAllQuestions() {
+            if (questions.length === 0) {
+                showToast('当前没有任何题目', 'info');
+                return;
+            }
+            if (!confirm(`确定要删除全部 ${questions.length} 道题目吗？\n\n此操作不可恢复，PDF 文件将保留在数据库中。`)) return;
+            if (!confirm(`再次确认：删除全部 ${questions.length} 道题目？\n\n提示：之后所有 PDF 都将变成孤立文件，可用 🧹 清理。`)) return;
+
+            console.group('🗑️ 清空所有题目');
+            const fileNameSet = getReferencedFiles();
+            console.log('  清空前题目数:', questions.length);
+            console.log('  被引用的文件:', [...fileNameSet]);
+            questions = [];
+            saveData();
+            console.log('  localStorage 已清空');
+            renderAll();
+            console.groupEnd();
+
+            showToast(`已清空全部题目`, 'info');
+
+            // 提示清理孤立文件
+            setTimeout(async () => {
+                const orphans = await getOrphanFiles();
+                if (orphans.length > 0 && confirm(`数据库中有 ${orphans.length} 个文件已无题目引用，是否立即清理？`)) {
+                    for (const name of orphans) await dbDeleteFile(name);
+                    showToast(`已清理 ${orphans.length} 个孤立文件`, 'success');
+                }
+            }, 150);
+        }
+
+        // ============ Toast 提示 ============
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                toast.style.transition = '0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // ============ 卷册-PDF文件名联动 ============
+        function syncPdfFileName() {
+            const volume = document.getElementById('editVolume').value;
+            const pdfFileNameEl = document.getElementById('editPdfFileName');
+            const pdfOffsetEl = document.getElementById('editPdfOffset');
+            const fileNameMap = {
+                '上册': '测绘程序设计（上册）.pdf',
+                '下册': '测绘程序设计（下册）.pdf'
+            };
+            const offsetMap = { '上册': 7, '下册': 8, '扩展': 0 };
+            if (fileNameMap[volume]) pdfFileNameEl.value = fileNameMap[volume];
+            if (pdfOffsetEl && offsetMap[volume] !== undefined) {
+                pdfOffsetEl.value = offsetMap[volume];
+                autoCalcPdfPage();
+            }
+        }
+
+        // ============ 初始化 ============
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            const volumeEl = document.getElementById('editVolume');
+            if (volumeEl) volumeEl.addEventListener('change', syncPdfFileName);
+
+            // 书籍页码和偏移量变化时自动计算 PDF 页码
+            const bookPageEl = document.getElementById('editBookPage');
+            const offsetEl = document.getElementById('editPdfOffset');
+            if (bookPageEl) bookPageEl.addEventListener('input', autoCalcPdfPage);
+            if (offsetEl) offsetEl.addEventListener('input', autoCalcPdfPage);
+        });
+    </script>
+</body>
+</html>
