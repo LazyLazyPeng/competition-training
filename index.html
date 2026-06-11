@@ -1099,9 +1099,7 @@
                 <!-- 操作区 -->
                 <div class="detail-actions-card">
                     <div class="section-title">⚡ 操作</div>
-                    <button class="btn btn-primary" id="detailDownloadBtn" onclick="downloadDetailPractice()" style="display:none;">
-                        📥 下载练习数据
-                    </button>
+                    <button class="btn btn-primary" id="detailDownloadBtn" onclick="downloadDetailPractice()" style="display:none;" title="下载该题对应的练习数据文件">📥 下载练习数据</button>
                     <button class="btn btn-outline" id="detailRandomBtn" onclick="randomPickFromDetail()">
                         🎲 随机抽题
                     </button>
@@ -1526,15 +1524,23 @@
 
             // --- 操作按钮 ---
             const downloadBtn = document.getElementById('detailDownloadBtn');
+            downloadBtn.style.display = '';
             if (q.practiceDataFile) {
                 const fileCount = q.practiceDataFile.split(',').filter(f => f.trim()).length;
                 downloadBtn.textContent = fileCount > 1
                     ? `📥 下载练习数据（${fileCount}个文件）`
                     : '📥 下载练习数据';
-                downloadBtn.style.display = '';
+                downloadBtn.className = 'btn btn-primary';
                 downloadBtn.onclick = () => downloadPractice(q.id);
+                downloadBtn.title = '';
             } else {
-                downloadBtn.style.display = 'none';
+                downloadBtn.textContent = '📥 下载练习数据（未关联）';
+                downloadBtn.className = 'btn btn-outline';
+                downloadBtn.style.opacity = '0.5';
+                downloadBtn.onclick = () => {
+                    showToast('该题目尚未关联练习数据。请前往管理后台 → 「🔗 关联练习数据」一键匹配', 'info');
+                };
+                downloadBtn.title = '点击前往管理后台关联练习数据';
             }
 
             // --- PDF 区域 ---
@@ -1917,7 +1923,9 @@
                             </div>
                             <div style="display:flex;gap:8px;margin-top:12px;">
                                 <button class="btn btn-primary" onclick="showDetail('${selected.id}')">查看详情</button>
-                                <button class="btn btn-outline" onclick="downloadPractice('${selected.id}')">📥 下载数据</button>
+                                ${selected.practiceDataFile
+                                    ? `<button class="btn btn-outline" onclick="downloadPractice('${selected.id}')">📥 下载数据</button>`
+                                    : ''}
                                 <button class="btn btn-outline" onclick="randomPick()">🔄 再抽一次</button>
                             </div>
                         </div>`;
