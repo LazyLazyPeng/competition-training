@@ -1,9 +1,6 @@
 # 大型 PDF 文件（通过 ZIP 导入，不纳入版本控制）
 book/
 
-# 练习数据（通过 ZIP 导入）
-practice-data/
-
 # 题目数据（通过 ZIP 导入，网站默认不带题目）
 questions.json
 
