@@ -1808,21 +1808,26 @@
         function autoApplyPracticeData() {
             if (!questions.length) return;
             let updated = 0;
+            const missed = [];
             questions.forEach(q => {
                 if (q.practiceDataFile) return;                         // 已有关联，跳过
                 const vol = q.volume;
-                const ch = q.chapter;
-                if (!vol || !ch) return;
+                const rawCh = q.chapter;
+                if (!vol || rawCh == null) return;
                 const volMap = PRACTICE_DATA_MAP[vol];
-                if (!volMap) return;
-                const files = volMap[ch];
-                if (!files || files.length === 0) return;
+                if (!volMap) { missed.push(`${vol}整体无映射`); return; }
+                // 兼容数字和字符串章节号（ZIP JSON 可能存为字符串）
+                const chNum = Number(rawCh);
+                const files = volMap[chNum] || volMap[String(chNum)] || volMap[rawCh];
+                if (!files || files.length === 0) { missed.push(`${vol} ch${rawCh}`); return; }
                 q.practiceDataFile = files.join(',');
                 updated++;
             });
             if (updated > 0) {
                 saveData();
-                console.log(`[自动关联] 已为 ${updated} 道题目自动关联练习数据`);
+                console.log(`[自动关联] 已为 ${updated} 道题目自动关联练习数据。${missed.length > 0 ? '未匹配: ' + missed.join(', ') : ''}`);
+            } else if (missed.length > 0) {
+                console.log(`[自动关联] 无题目成功关联。未匹配: ${missed.join(', ')}。请检查题目卷册/章节字段。`);
             }
         }
 
@@ -1838,13 +1843,14 @@
 
             questions.forEach(q => {
                 const vol = q.volume;
-                const ch = q.chapter;
-                if (!vol || !ch) { unmatched++; return; }
+                const rawCh = q.chapter;
+                if (!vol || rawCh == null) { unmatched++; return; }
 
                 const volMap = PRACTICE_DATA_MAP[vol];
                 if (!volMap) { unmatched++; return; }
 
-                const files = volMap[ch];
+                const chNum = Number(rawCh);
+                const files = volMap[chNum] || volMap[String(chNum)] || volMap[rawCh];
                 if (!files || files.length === 0) { unmatched++; return; }
 
                 // 用逗号拼接所有关联文件
@@ -2376,6 +2382,7 @@
                     if (!confirm(`即将导入 ${data.length} 道题目，这将覆盖当前所有数据。确定继续？`)) return;
 
                     questions = data;
+                    autoApplyPracticeData();                 // 自动关联练习数据
                     saveData();
                     renderAll();
                     showToast(`成功导入 ${data.length} 道题目`, 'success');
@@ -2478,6 +2485,7 @@
 
                 // 5. 导入题目数据
                 questions = data;
+                autoApplyPracticeData();                     // 自动关联练习数据
                 saveData();
                 renderAll();
 
