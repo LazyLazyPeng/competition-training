@@ -601,6 +601,92 @@
             line-height: 1.4;
         }
 
+        /* 预览弹窗 */
+        .preview-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .preview-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            width: 85vw;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.25s ease;
+        }
+        .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .preview-header .preview-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .preview-header .preview-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 0 4px;
+            line-height: 1;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+        .preview-header .preview-close:hover {
+            color: var(--danger);
+            background: rgba(239,68,68,0.08);
+        }
+        .preview-body {
+            flex: 1;
+            overflow: auto;
+            padding: 16px 20px;
+        }
+        .preview-body pre {
+            margin: 0;
+            font-family: "Cascadia Code", "Fira Code", "Consolas", "Source Code Pro", "PingFang SC", "Microsoft YaHei", monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-all;
+            background: var(--bg);
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            max-height: 60vh;
+            overflow: auto;
+        }
+        .preview-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
         .detail-pdf-wrapper {
             flex: 1;
             min-width: 0;
@@ -1178,6 +1264,19 @@
         </div>
     </div>
 
+    <!-- 预览弹窗 -->
+    <div id="previewOverlay" class="preview-overlay" style="display:none;" onclick="closePreviewOverlay(event)">
+        <div class="preview-modal" onclick="event.stopPropagation()">
+            <div class="preview-header">
+                <span class="preview-title" id="previewTitle">数据预览</span>
+                <button class="preview-close" onclick="closePreviewModal()" title="关闭">✕</button>
+            </div>
+            <div class="preview-body" id="previewBody">
+                <div class="preview-loading">⏳ 正在加载...</div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============ 全局状态 ============
         const STORAGE_KEY = 'competition_questions_v4';
@@ -1598,11 +1697,16 @@
                     const iconMap = { dat: '🗂️', csv: '📋', json: '📋', txt: '📄' };
                     const icon = iconMap[ext] || '📎';
                     const cls = ext === 'dat' ? 'file-type-dat' : 'file-type-txt';
+                    const canPreview = (ext === 'txt' || ext === 'dat' || ext === 'csv');
+                    const previewBtn = canPreview
+                        ? `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewPracticeFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="预览文件内容" style="padding:2px 7px;font-size:13px;">👁</button>`
+                        : '';
                     return `<div class="data-file-row">
                         <span class="data-file-icon">${icon}</span>
                         <span class="data-file-name" title="${f}">${baseName}</span>
                         <span class="data-file-ext ${cls}">.${ext}</span>
                         <button class="btn btn-outline btn-sm" onclick="downloadSinglePracticeFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="下载此文件">⬇</button>
+                        ${previewBtn}
                     </div>`;
                 }).join('');
 
@@ -1791,6 +1895,91 @@
             }
         }
 
+        /** 将 ArrayBuffer 解码为文本（自动尝试 GBK → UTF-8） */
+        function decodeChineseText(arrayBuffer) {
+            // 中文测绘数据文件通常为 GBK/GB18030 编码，优先尝试
+            const encodings = ['gbk', 'gb18030', 'gb2312', 'utf-8'];
+            for (const enc of encodings) {
+                try {
+                    const decoder = new TextDecoder(enc, { fatal: false });
+                    const result = decoder.decode(arrayBuffer);
+                    // 如果解码结果包含常见的乱码替换字符比例过高，继续尝试下一种
+                    const replacementRatio = (result.match(/\uFFFD/g) || []).length / Math.max(result.length, 1);
+                    if (replacementRatio < 0.1) return result;
+                } catch (e) {
+                    continue;
+                }
+            }
+            // 最终回退
+            return new TextDecoder('utf-8').decode(arrayBuffer);
+        }
+
+        /** 从详情页预览文本文件内容 */
+        async function previewPracticeFile(qid, filePath) {
+            const baseName = filePath.split('/').pop();
+            const overlay = document.getElementById('previewOverlay');
+            const titleEl = document.getElementById('previewTitle');
+            const bodyEl = document.getElementById('previewBody');
+
+            // 显示弹窗
+            titleEl.textContent = baseName;
+            bodyEl.innerHTML = '<div class="preview-loading">⏳ 正在加载...</div>';
+            overlay.style.display = '';
+
+            let text = null;
+
+            // 1. 尝试从 IndexedDB 读取
+            try {
+                const entry = await dbGetFile(filePath);
+                if (entry && entry.blob && entry.blob.size > 0) {
+                    const buffer = await entry.blob.arrayBuffer();
+                    text = decodeChineseText(buffer);
+                }
+            } catch (e) { /* 忽略 */ }
+
+            // 2. 回退：从服务器静态目录加载
+            if (text == null) {
+                try {
+                    const resp = await fetch(`practice-data/${filePath}`);
+                    if (resp.ok) {
+                        const buffer = await resp.arrayBuffer();
+                        text = decodeChineseText(buffer);
+                    }
+                } catch (e) { /* 忽略 */ }
+            }
+
+            if (text != null) {
+                // 限制显示大小，避免大文件卡顿
+                const maxLen = 500000;
+                let displayText = text;
+                let truncated = false;
+                if (text.length > maxLen) {
+                    displayText = text.substring(0, maxLen);
+                    truncated = true;
+                }
+                // 对 HTML 特殊字符做转义
+                const escaped = displayText
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                bodyEl.innerHTML = `<pre>${escaped}${truncated ? '\n\n... (文件过大，仅显示前 ' + Math.round(maxLen/1000) + ' KB)' : ''}</pre>`;
+            } else {
+                bodyEl.innerHTML = `<div class="preview-loading" style="color:var(--danger);">⚠ 无法加载文件: ${baseName}<br><span style="font-size:12px;color:var(--text-muted);">请确认文件已导入或存在于 practice-data 目录</span></div>`;
+            }
+        }
+
+        /** 关闭预览弹窗 */
+        function closePreviewModal() {
+            document.getElementById('previewOverlay').style.display = 'none';
+        }
+
+        /** 点击遮罩层关闭 */
+        function closePreviewOverlay(e) {
+            if (e.target === e.currentTarget) {
+                closePreviewModal();
+            }
+        }
+
         async function downloadPractice(id) {
             const q = questions.find(q => q.id === id);
             if (!q || !q.practiceDataFile) {
@@ -1893,6 +2082,43 @@
             }
         };
 
+        // 书本章节号 → PRACTICE_DATA_MAP 的 (卷册, key) 转换
+        // 书上编号体系：上册(教学篇1-10 + 基础篇10-21)，下册(进阶篇22-33 + 竞赛篇34-51 + 创新篇52-61)
+        // v1文件(Part1+Part2)在 PRACTICE_DATA_MAP['上册']，v2文件(Part3+Part4)在 PRACTICE_DATA_MAP['下册']
+        function resolvePracticeData(volume, bookChapter) {
+            const ch = Number(bookChapter);
+            if (isNaN(ch)) return null;
+
+            if (volume === '上册') {
+                // 教学篇 1-10：无练习数据；基础篇 10-21 → Part1 → v1 → 上册 map key=ch-9
+                if (ch >= 10 && ch <= 21) {
+                    const mapKey = ch - 9;  // 第10章→1, 第15章→6, 第21章→12
+                    const volMap = PRACTICE_DATA_MAP['上册'];
+                    return volMap ? (volMap[mapKey] || volMap[String(mapKey)] || null) : null;
+                }
+                return null;
+            }
+
+            if (volume === '下册') {
+                let mapVol, mapKey;
+                if (ch >= 22 && ch <= 33) {
+                    // 进阶篇 → Part2 → v1文件 → PRACTICE_DATA_MAP['上册']
+                    mapVol = '上册';
+                    mapKey = ch - 9;  // 第22章→13, 第28章→19, 第33章→24
+                } else if (ch >= 34 && ch <= 61) {
+                    // 竞赛篇(34-51) + 创新篇(52-61) → Part3+Part4 → v2文件 → PRACTICE_DATA_MAP['下册']
+                    mapVol = '下册';
+                    mapKey = ch - 33;  // 第34章→1, 第39章→6, 第52章→19
+                } else {
+                    return null;
+                }
+                const volMap = PRACTICE_DATA_MAP[mapVol];
+                return volMap ? (volMap[mapKey] || volMap[String(mapKey)] || null) : null;
+            }
+
+            return null;
+        }
+
         // 静默版：页面加载时自动关联，不弹 toast
         function autoApplyPracticeData() {
             if (!questions.length) return;
@@ -1900,15 +2126,9 @@
             const missed = [];
             questions.forEach(q => {
                 if (q.practiceDataFile) return;                         // 已有关联，跳过
-                const vol = q.volume;
-                const rawCh = q.chapter;
-                if (!vol || rawCh == null) return;
-                const volMap = PRACTICE_DATA_MAP[vol];
-                if (!volMap) { missed.push(`${vol}整体无映射`); return; }
-                // 兼容数字和字符串章节号（ZIP JSON 可能存为字符串）
-                const chNum = Number(rawCh);
-                const files = volMap[chNum] || volMap[String(chNum)] || volMap[rawCh];
-                if (!files || files.length === 0) { missed.push(`${vol} ch${rawCh}`); return; }
+                if (!q.volume || q.chapter == null) return;
+                const files = resolvePracticeData(q.volume, q.chapter);
+                if (!files || files.length === 0) { missed.push(`${q.volume} ch${q.chapter}`); return; }
                 q.practiceDataFile = files.join(',');
                 updated++;
             });
@@ -1931,15 +2151,8 @@
             let updated = 0;
 
             questions.forEach(q => {
-                const vol = q.volume;
-                const rawCh = q.chapter;
-                if (!vol || rawCh == null) { unmatched++; return; }
-
-                const volMap = PRACTICE_DATA_MAP[vol];
-                if (!volMap) { unmatched++; return; }
-
-                const chNum = Number(rawCh);
-                const files = volMap[chNum] || volMap[String(chNum)] || volMap[rawCh];
+                if (!q.volume || q.chapter == null) { unmatched++; return; }
+                const files = resolvePracticeData(q.volume, q.chapter);
                 if (!files || files.length === 0) { unmatched++; return; }
 
                 // 用逗号拼接所有关联文件
@@ -2695,35 +2908,39 @@
             }
         }
 
-        /** 清空所有题目 */
+        /** 清空所有题目及数据库文件 */
         async function clearAllQuestions() {
             if (questions.length === 0) {
                 showToast('当前没有任何题目', 'info');
                 return;
             }
-            if (!confirm(`确定要删除全部 ${questions.length} 道题目吗？\n\n此操作不可恢复，PDF 文件将保留在数据库中。`)) return;
-            if (!confirm(`再次确认：删除全部 ${questions.length} 道题目？\n\n提示：之后所有 PDF 都将变成孤立文件，可用 🧹 清理。`)) return;
+            if (!confirm(`确定要删除全部 ${questions.length} 道题目以及所有关联的文件数据吗？\n\n⚠ 此操作不可恢复！\n\n将同时清空：\n  · ${questions.length} 道题目\n  · 所有 PDF 文件\n  · 所有练习数据文件`)) return;
+            if (!confirm(`⚠ 最终确认：删除全部题目和数据库中的所有文件？`)) return;
 
-            console.group('🗑️ 清空所有题目');
-            const fileNameSet = getReferencedFiles();
-            console.log('  清空前题目数:', questions.length);
-            console.log('  被引用的文件:', [...fileNameSet]);
+            console.group('🗑️ 清空全部数据');
+
+            // 1. 清空题目
             questions = [];
             saveData();
             console.log('  localStorage 已清空');
+
+            // 2. 删除 IndexedDB 数据库
+            dbReady = null;
+            try {
+                await new Promise((resolve, reject) => {
+                    const req = indexedDB.deleteDatabase(DB_NAME);
+                    req.onsuccess = () => { console.log('  IndexedDB 已删除'); resolve(); };
+                    req.onerror = () => reject(req.error);
+                    req.onblocked = () => { console.warn('  IndexedDB 删除被阻塞，请关闭其他标签页'); resolve(); };
+                });
+            } catch (e) {
+                console.warn('  删除数据库出错:', e);
+            }
+
             renderAll();
             console.groupEnd();
 
-            showToast(`已清空全部题目`, 'info');
-
-            // 提示清理孤立文件
-            setTimeout(async () => {
-                const orphans = await getOrphanFiles();
-                if (orphans.length > 0 && confirm(`数据库中有 ${orphans.length} 个文件已无题目引用，是否立即清理？`)) {
-                    for (const name of orphans) await dbDeleteFile(name);
-                    showToast(`已清理 ${orphans.length} 个孤立文件`, 'success');
-                }
-            }, 150);
+            showToast('已清空全部题目和文件数据', 'success');
         }
 
         // ============ Toast 提示 ============
