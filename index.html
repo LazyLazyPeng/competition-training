@@ -1143,6 +1143,8 @@
                 try {
                     questions = JSON.parse(stored);
                     if (questions.length > 0) {
+                        // 自动关联练习数据（无提示）
+                        autoApplyPracticeData();
                         renderAll();
                         return;
                     }
@@ -1154,6 +1156,7 @@
                 const resp = await fetch(DEFAULT_DATA_URL);
                 if (resp.ok) {
                     questions = await resp.json();
+                    autoApplyPracticeData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
                 }
             } catch (e) {
@@ -1800,6 +1803,28 @@
                 24: ['v2-24a.txt', 'v2-24b.txt', 'v2-24c.txt'],
             }
         };
+
+        // 静默版：页面加载时自动关联，不弹 toast
+        function autoApplyPracticeData() {
+            if (!questions.length) return;
+            let updated = 0;
+            questions.forEach(q => {
+                if (q.practiceDataFile) return;                         // 已有关联，跳过
+                const vol = q.volume;
+                const ch = q.chapter;
+                if (!vol || !ch) return;
+                const volMap = PRACTICE_DATA_MAP[vol];
+                if (!volMap) return;
+                const files = volMap[ch];
+                if (!files || files.length === 0) return;
+                q.practiceDataFile = files.join(',');
+                updated++;
+            });
+            if (updated > 0) {
+                saveData();
+                console.log(`[自动关联] 已为 ${updated} 道题目自动关联练习数据`);
+            }
+        }
 
         function autoMapPracticeData() {
             if (questions.length === 0) {
@@ -2482,6 +2507,7 @@
                 .then(resp => resp.json())
                 .then(data => {
                     questions = data;
+                    autoApplyPracticeData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
                     renderAll();
                     showToast('已恢复默认数据', 'success');
