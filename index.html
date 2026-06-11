@@ -1653,50 +1653,60 @@
         });
 
         // ============ 下载练习数据 ============
-        function downloadPractice(id) {
+        async function downloadPractice(id) {
             const q = questions.find(q => q.id === id);
             if (!q || !q.practiceDataFile) {
                 showToast('该题目暂无练习数据', 'error');
                 return;
             }
 
-            const filePath = `practice-data/${q.practiceDataFile}`;
+            const fullPath = q.practiceDataFile;           // 可能含子目录，如 ecf/v2-07.txt
+            const baseName = fullPath.split('/').pop();     // 下载时只取文件名
 
-            // 尝试从服务器加载
-            fetch(filePath)
-                .then(resp => {
-                    if (!resp.ok) throw new Error('文件不存在');
-                    return resp.text();
-                })
-                .then(text => {
-                    triggerDownload(q.practiceDataFile, text);
-                })
-                .catch(() => {
-                    // 如果文件不存在，生成一个占位文件
-                    const placeholder = `# ${q.title} - 练习数据
-# ================================
-# 卷册: ${q.volume}
-# 章节: 第${q.chapter}章 ${q.chapterTitle}
-# PDF页码: 第${q.pdfPage}页
-#
-# 请将实际练习数据放入 practice-data/${q.practiceDataFile}
-`;
-                    triggerDownload(q.practiceDataFile, placeholder);
-                    showToast('练习数据文件不存在，已下载占位模板', 'info');
-                });
-        }
+            // 1. 优先从 IndexedDB 获取（ZIP 导入的数据存在这里）
+            try {
+                const entry = await dbGetFile(fullPath);
+                if (entry && entry.blob && entry.blob.size > 0) {
+                    const blob = entry.type
+                        ? new Blob([entry.blob], { type: entry.type })
+                        : entry.blob;
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = baseName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast(`已下载: ${baseName}`, 'success');
+                    return;
+                }
+            } catch (e) { /* DB 中不存在，继续尝试服务器 */ }
 
-        function triggerDownload(filename, content) {
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast(`已下载: ${filename}`, 'success');
+            // 2. 回退：从服务器静态目录加载（适用 GitHub Pages / Live Server）
+            try {
+                const filePath = `practice-data/${fullPath}`;
+                const resp = await fetch(filePath);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const text = await resp.text();
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = baseName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast(`已下载: ${baseName}`, 'success');
+                return;
+            } catch (e) { /* 服务器也没有 */ }
+
+            // 3. 都没有 → 提示用户导入
+            showToast(
+                `练习数据 "${fullPath}" 未找到。请先通过「📤 导入题目包」导入包含该数据的 ZIP 包。`,
+                'error'
+            );
         }
 
         // ============ 随机抽题 ============
@@ -2153,6 +2163,21 @@
                                 const blob = await resp.blob();
                                 zip.folder('book').file(pdfName, blob);
                                 pdfCount++;
+                            }
+                        }
+                    } catch (e) { /* 无法获取 */ }
+                }
+
+                // 6. 尝试从 practice-data/ 文件夹加载未在 DB 中的练习数据
+                for (const pfName of practiceSet) {
+                    try {
+                        const hasFile = zip.file('practice-data/' + pfName);
+                        if (!hasFile) {
+                            const resp = await fetch(`practice-data/${encodeURIComponent(pfName)}`);
+                            if (resp.ok) {
+                                const blob = await resp.blob();
+                                zip.folder('practice-data').file(pfName, blob);
+                                practiceCount++;
                             }
                         }
                     } catch (e) { /* 无法获取 */ }
