@@ -556,6 +556,19 @@
             justify-content: center;
         }
 
+        /* PDF 标题栏内联计时器 */
+        .pdf-timer-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: #e36209;
+            background: #fef3e8;
+            padding: 3px 10px;
+            border-radius: 4px;
+            user-select: none;
+            white-space: nowrap;
+        }
+
         /* 数据文件列表行 */
         .data-file-row {
             display: flex;
@@ -738,6 +751,42 @@
             color: #fff;
             font-size: 16px;
             pointer-events: none;
+        }
+
+        /* PDF 最大化按钮 */
+        .pdf-max-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .pdf-max-btn:hover {
+            background: var(--hover);
+            color: var(--text);
+        }
+
+        /* PDF 最大化状态 */
+        .pdf-maximized {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 10000 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .pdf-maximized .detail-pdf-header {
+            padding: 6px 16px;
+        }
+        .pdf-maximized .detail-pdf-body {
+            background: #333;
         }
 
         /* ============ 管理后台 ============ */
@@ -1243,8 +1292,19 @@
             <!-- 右侧 PDF 查看区 -->
             <div class="detail-pdf-wrapper">
                 <div class="detail-pdf-header">
-                    <span id="detailPdfFileName">测绘程序设计（上册）.pdf</span>
-                    <span style="font-size:12px;color:var(--text-muted);" id="detailPdfPageTag">第 X 页</span>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span id="detailPdfFileName">测绘程序设计（上册）.pdf</span>
+                        <span class="pdf-timer-display" id="detailTimer">⏱ 00:00:00</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:12px;color:var(--text-muted);" id="detailPdfPageTag">第 X 页</span>
+                        <button class="pdf-max-btn" onclick="togglePdfMaximize()" title="最大化PDF">
+                            <svg id="pdfMaxIcon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M3 3v5h5V3H3zM11 3v5h-5V3h5zM3 13v-5h5v5H3zM13 3v5h-5V3h5zM13 13v-5h-5v5h5z"/>
+                                <rect x="1.5" y="1.5" width="13" height="13" rx="1"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="detail-pdf-body">
                     <div class="detail-pdf-loading" id="pdfLoading">⏳ 正在加载 PDF...</div>
@@ -1639,6 +1699,34 @@
         // ============ 题目详情页面 ============
         let currentDetailId = null;
 
+        // ============ 详情页计时器 ============
+        let __detailTimerStart = null;
+        let __detailTimerInterval = null;
+
+        function startDetailTimer() {
+            stopDetailTimer();
+            __detailTimerStart = Date.now();
+            const update = () => {
+                const elapsed = Math.floor((Date.now() - __detailTimerStart) / 1000);
+                const h = Math.floor(elapsed / 3600).toString().padStart(2, '0');
+                const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
+                const s = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('detailTimer').textContent = `⏱ ${h}:${m}:${s}`;
+            };
+            update();
+            __detailTimerInterval = setInterval(update, 1000);
+        }
+
+        function stopDetailTimer() {
+            if (__detailTimerInterval) {
+                clearInterval(__detailTimerInterval);
+                __detailTimerInterval = null;
+            }
+            __detailTimerStart = null;
+            const el = document.getElementById('detailTimer');
+            if (el) el.textContent = '⏱ 00:00:00';
+        }
+
         async function showDetail(id) {
             const q = questions.find(q => q.id === id);
             if (!q) {
@@ -1792,7 +1880,8 @@
                 window.__pdfLoadTimer = null;
             }, timeoutMs);
 
-            // 切换到详情页
+            // 启动计时器并切换到详情页
+            startDetailTimer();
             switchPage('detail');
             console.groupEnd();
         }
@@ -1807,9 +1896,13 @@
         }
 
         function closeDetail() {
+            // 停止计时器
+            stopDetailTimer();
             // 清除超时兜底定时器
             if (window.__pdfLoadTimer) { clearTimeout(window.__pdfLoadTimer); window.__pdfLoadTimer = null; }
             currentDetailId = null;
+            // 如果 PDF 处于最大化状态，先还原
+            if (window.__pdfMaximized) { togglePdfMaximize(); }
             // 返回上一页
             const targetPage = prevPage || 'browse';
             switchPage(targetPage);
@@ -1827,6 +1920,21 @@
             }, 300);
         }
 
+        function togglePdfMaximize() {
+            const wrapper = document.querySelector('.detail-pdf-wrapper');
+            const icon = document.getElementById('pdfMaxIcon');
+            if (!wrapper) return;
+            const isMax = wrapper.classList.toggle('pdf-maximized');
+            window.__pdfMaximized = isMax;
+            if (isMax) {
+                icon.innerHTML = '<rect x="2.5" y="5" width="11" height="9" rx="1"/><path d="M8.5 5V2.5H5"/>';
+                document.body.style.overflow = 'hidden';
+            } else {
+                icon.innerHTML = '<path d="M3 3v5h5V3H3zM11 3v5h-5V3h5zM3 13v-5h5v5H3zM13 3v5h-5V3h5zM13 13v-5h-5v5h5z"/><rect x="1.5" y="1.5" width="13" height="13" rx="1"/>';
+                document.body.style.overflow = '';
+            }
+        }
+
         function downloadDetailPractice() {
             if (currentDetailId) downloadPractice(currentDetailId);
         }
@@ -1842,7 +1950,11 @@
         // ESC 返回
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && getCurrentPage() === 'detail') {
-                closeDetail();
+                if (window.__pdfMaximized) {
+                    togglePdfMaximize();
+                } else {
+                    closeDetail();
+                }
             }
         });
 
