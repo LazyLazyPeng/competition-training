@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>竞赛训练系统</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <title>西南石油大学测绘创新创业智能大赛训练系统</title>
+    <script src="jszip.min.js"></script>
     <style>
         /* ============ CSS 变量 ============ */
         :root {
@@ -556,19 +556,36 @@
             justify-content: center;
         }
 
-        /* PDF 标题栏内联计时器 */
+        /* PDF 标题栏内联计时器 - 简约风格 */
         .pdf-timer-display {
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            font-weight: 700;
-            color: #e36209;
-            background: #fef3e8;
-            padding: 3px 10px;
-            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text);
+            background: var(--bg-secondary, #f5f5f5);
+            padding: 3px 12px 3px 8px;
+            border-radius: 20px;
+            border: 1px solid var(--border, #e0e0e0);
             user-select: none;
             white-space: nowrap;
+            letter-spacing: 0.3px;
+            transition: background 0.2s, border-color 0.2s;
         }
-
+        .pdf-timer-display .timer-icon {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+        .pdf-timer-display .timer-sep {
+            opacity: 0.4;
+        }
+        .pdf-timer-display:hover {
+            background: var(--bg-hover, #eee);
+            border-color: var(--primary, #3b82f6);
+        }
+        
         /* 数据文件列表行 */
         .data-file-row {
             display: flex;
@@ -1026,8 +1043,8 @@
     <!-- ============ 顶部导航栏 ============ -->
     <nav class="navbar">
         <div class="navbar-brand" onclick="switchPage('browse')">
-            <span class="icon">🏆</span>
-            <span>竞赛训练系统</span>
+            <img src="https://www.swpu.edu.cn/images/public/blacklogo.png" alt="SWPU" style="height:36px;width:auto;">
+            <span>西南石油大学测绘创新创业智能大赛训练系统</span>
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
@@ -1091,9 +1108,9 @@
             <div class="admin-toolbar">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button class="btn btn-primary" onclick="showAddForm()">＋ 新增题目</button>
-                    <button class="btn btn-success" onclick="exportFullPackage()">📦 导出完整包 (ZIP)</button>
+                    <button class="btn btn-primary" onclick="exportFullPackage()">📦 导出完整包 (ZIP)</button>
                     <button class="btn btn-outline" onclick="exportData()" style="font-size:12px;">📄 仅导出 JSON</button>
-                    <label class="btn btn-primary" style="cursor:pointer;background:#7c3aed;">
+                    <label class="btn btn-primary" style="cursor:pointer;">
                         📥 导入完整包 (ZIP)
                         <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
                     </label>
@@ -1151,9 +1168,11 @@
                         <label>上传 PDF 文件 📎</label>
                         <input type="file" id="editPdfFile" accept=".pdf" onchange="onPdfFileSelected()" style="padding:8px 0;">
                         <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
-                            上传后自动存储到浏览器数据库，导出时一并打包
+                            上传后自动存储到浏览器数据库，导出时一并打包。
+                            如果 PDF 已在 <strong>book/</strong> 目录中，只需填写文件名，无需重复上传。
                         </span>
                         <span id="pdfFileStatus" style="font-size:11px;color:var(--success);display:none;">✅ PDF 已选择</span>
+                        <span id="pdfDbStatus" style="font-size:11px;color:var(--text-muted);display:none;"></span>
                     </div>
                 </div>
                 <div style="border:1px dashed var(--border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:16px;background:var(--bg);">
@@ -1161,7 +1180,7 @@
                     <div class="form-grid" style="margin-bottom:0;">
                         <div class="form-group">
                             <label>PDF 文件名</label>
-                            <input type="text" id="editPdfFileName" placeholder="如：上册.pdf 或 自定义.pdf">
+                            <input type="text" id="editPdfFileName" placeholder="如：上册.pdf 或 自定义.pdf" oninput="autoCalcPdfPage();checkPdfDbStatus(this.value)">
                         </div>
                         <div class="form-group">
                             <label>偏移量（PDF页 = 书籍页 + 偏移）</label>
@@ -1192,8 +1211,25 @@
                 <div class="form-group" style="margin-bottom:16px;">
                     <label>上传练习数据 📎</label>
                     <input type="file" id="editPracticeUpload" accept=".txt,.csv,.dat,.DAT,.json,.bin,.xlsx,.xls,.sp3,.18o,.18n,.atx,.clk,.erp,.dxf,.shp,.emf,.grd" multiple onchange="onPracticeFilesSelected()" style="padding:8px 0;">
-                    <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">支持多选，自动存储到浏览器数据库</span>
+                    <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
+                        自动添加章节路径前缀（如 ch16/文件名.txt），存储到浏览器数据库
+                    </span>
                     <span id="practiceFileStatus" style="font-size:11px;color:var(--success);display:none;"></span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>参考答案文件名</label>
+                        <input type="text" id="editAnswerFile" placeholder="v1-01_answer.txt 或 answer.zip（逗号分隔多个）">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label>上传/更新参考答案 📎</label>
+                    <input type="file" id="editAnswerUpload" accept=".txt,.csv,.dat,.DAT,.json,.xls,.xlsx,.dxf,.shp,.zip" multiple onchange="onAnswerFilesSelected()" style="padding:8px 0;">
+                    <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block;">
+                        上传后自动存储到浏览器数据库（含章节路径前缀），导出时一并打包。<br>
+                        <strong>支持格式</strong>：txt（可预览）、csv、dat、xls/xlsx、dxf、shp、zip 等
+                    </span>
+                    <span id="answerFileStatus" style="font-size:11px;color:var(--success);display:none;"></span>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button class="btn btn-primary" onclick="saveQuestion()">💾 保存</button>
@@ -1268,14 +1304,6 @@
                     </div>
                 </div>
 
-                <!-- 操作区 -->
-                <div class="detail-actions-card">
-                    <div class="section-title">⚡ 操作</div>
-                    <button class="btn btn-outline" id="detailRandomBtn" onclick="randomPickFromDetail()">
-                        🎲 随机抽题
-                    </button>
-                </div>
-
                 <!-- 练习数据文件列表 -->
                 <div class="detail-actions-card" id="detailDataListCard" style="display:none;">
                     <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1287,6 +1315,18 @@
                         该题目尚未关联练习数据。<br>请前往 <a href="#" onclick="switchPage('admin');closeDetail();return false;" style="color:var(--primary);">管理后台 → 🔗 关联练习数据</a> 一键匹配
                     </div>
                 </div>
+
+                <!-- 参考答案文件列表 -->
+                <div class="detail-actions-card" id="detailAnswerCard" style="display:none;">
+                    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span>📝 参考答案</span>
+                        <button class="btn btn-primary btn-sm" id="detailAnswerDownloadAllBtn" onclick="downloadAllAnswers()" title="一键下载全部参考答案" style="display:none;">📥 下载全部</button>
+                    </div>
+                    <div id="detailAnswerList" style="display:flex;flex-direction:column;gap:6px;"></div>
+                    <div id="detailAnswerEmpty" style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px;display:none;">
+                        该题目暂无参考答案。
+                    </div>
+                </div>
             </div>
 
             <!-- 右侧 PDF 查看区 -->
@@ -1294,14 +1334,13 @@
                 <div class="detail-pdf-header">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span id="detailPdfFileName">测绘程序设计（上册）.pdf</span>
-                        <span class="pdf-timer-display" id="detailTimer">⏱ 00:00:00</span>
+                        <span class="pdf-timer-display" id="detailTimer"><span class="timer-icon">⏱</span> <span id="timerDigits">00<span class="timer-sep">:</span>00<span class="timer-sep">:</span>00</span></span>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span style="font-size:12px;color:var(--text-muted);" id="detailPdfPageTag">第 X 页</span>
                         <button class="pdf-max-btn" onclick="togglePdfMaximize()" title="最大化PDF">
-                            <svg id="pdfMaxIcon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M3 3v5h5V3H3zM11 3v5h-5V3h5zM3 13v-5h5v5H3zM13 3v5h-5V3h5zM13 13v-5h-5v5h5z"/>
-                                <rect x="1.5" y="1.5" width="13" height="13" rx="1"/>
+                            <svg id="pdfMaxIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
                             </svg>
                         </button>
                     </div>
@@ -1319,7 +1358,16 @@
         <div class="preview-modal" onclick="event.stopPropagation()">
             <div class="preview-header">
                 <span class="preview-title" id="previewTitle">数据预览</span>
-                <button class="preview-close" onclick="closePreviewModal()" title="关闭">✕</button>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <select id="previewEncoding" onchange="redecodePreview()" style="font-size:12px;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);">
+                        <option value="utf-8">UTF-8</option>
+                        <option value="utf-8-bom">UTF-8 BOM</option>
+                        <option value="gbk">GBK</option>
+                        <option value="gb18030">GB18030</option>
+                        <option value="gb2312">GB2312</option>
+                    </select>
+                    <button class="preview-close" onclick="closePreviewModal()" title="关闭">✕</button>
+                </div>
             </div>
             <div class="preview-body" id="previewBody">
                 <div class="preview-loading">⏳ 正在加载...</div>
@@ -1328,6 +1376,11 @@
     </div>
 
     <script>
+        /** 安全编码 URL 路径（保留 / 分隔符，编码中文字符和特殊符号） */
+        function encPath(path) {
+            return path.split('/').map(s => encodeURIComponent(s)).join('/');
+        }
+
         // ============ 全局状态 ============
         const STORAGE_KEY = 'competition_questions_v4';
         const DEFAULT_DATA_URL = 'questions.json';
@@ -1347,8 +1400,9 @@
                 try {
                     questions = JSON.parse(stored);
                     if (questions.length > 0) {
-                        // 自动关联练习数据（无提示）
+                        // 自动关联练习数据和参考答案（无提示）
                         autoApplyPracticeData();
+                        autoApplyAnswerData();
                         renderAll();
                         return;
                     }
@@ -1361,13 +1415,43 @@
                 if (resp.ok) {
                     questions = await resp.json();
                     autoApplyPracticeData();
+                    autoApplyAnswerData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
                 }
             } catch (e) {
-                console.warn('无法加载默认数据，使用空数据');
+                console.warn('⚠ 无法通过 fetch 加载 questions.json（可能是 file:// 协议限制），显示导入引导');
                 questions = [];
             }
             renderAll();
+            
+            // 如果是 file:// 协议且无数据，替换为带引导的欢迎页
+            if (questions.length === 0 && window.location.protocol === 'file:') {
+                setTimeout(() => {
+                    const grid = document.getElementById('browseGrid');
+                    if (grid && questions.length === 0) {
+                        grid.innerHTML = `<div class="welcome-section" style="grid-column:1/-1;">
+                            <div class="welcome-icon">⚠️</div>
+                            <h2>需要本地 HTTP 服务器</h2>
+                            <p style="color:var(--danger);margin-bottom:12px;">
+                                检测到您通过 file:// 协议打开此页面。<br>
+                                由于浏览器安全限制，直接双击打开 <strong>无法加载数据</strong>。
+                            </p>
+                            <p style="margin-bottom:24px;color:var(--text-secondary);">
+                                <strong>解决方法（任选其一）：</strong><br>
+                                ① 双击运行 <code>启动服务器.bat</code>（推荐）<br>
+                                ② 点击下方按钮，导入完整 ZIP 包
+                            </p>
+                            <div class="welcome-actions">
+                                <label class="btn btn-primary" style="cursor:pointer;">
+                                    📤 导入题目包 (ZIP)
+                                    <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
+                                </label>
+                                <button class="btn btn-outline" onclick="switchPage('admin')">⚙️ 管理后台</button>
+                            </div>
+                        </div>`;
+                    }
+                }, 500);
+            }
         }
 
         function saveData() {
@@ -1703,6 +1787,7 @@
         let __detailTimerStart = null;
         let __detailTimerInterval = null;
 
+        /** 进入详情页计时：简单的计时器，每次打开重新计时 */
         function startDetailTimer() {
             stopDetailTimer();
             __detailTimerStart = Date.now();
@@ -1711,7 +1796,7 @@
                 const h = Math.floor(elapsed / 3600).toString().padStart(2, '0');
                 const m = Math.floor((elapsed % 3600) / 60).toString().padStart(2, '0');
                 const s = (elapsed % 60).toString().padStart(2, '0');
-                document.getElementById('detailTimer').textContent = `⏱ ${h}:${m}:${s}`;
+                document.getElementById('timerDigits').innerHTML = `${h}<span class="timer-sep">:</span>${m}<span class="timer-sep">:</span>${s}`;
             };
             update();
             __detailTimerInterval = setInterval(update, 1000);
@@ -1724,7 +1809,7 @@
             }
             __detailTimerStart = null;
             const el = document.getElementById('detailTimer');
-            if (el) el.textContent = '⏱ 00:00:00';
+            if (el) el.innerHTML = '<span class="timer-icon">⏱</span> <span id="timerDigits">00<span class="timer-sep">:</span>00<span class="timer-sep">:</span>00</span>';
         }
 
         async function showDetail(id) {
@@ -1814,6 +1899,48 @@
                 dataEmptyEl.style.display = '';
             }
 
+            // --- 参考答案文件列表 ---
+            const answerCard = document.getElementById('detailAnswerCard');
+            const answerListEl = document.getElementById('detailAnswerList');
+            const answerEmptyEl = document.getElementById('detailAnswerEmpty');
+            const answerDownloadAllBtn = document.getElementById('detailAnswerDownloadAllBtn');
+
+            if (q.answerFile) {
+                const answerFiles = q.answerFile.split(',').map(f => f.trim()).filter(Boolean);
+                answerCard.style.display = '';
+                answerEmptyEl.style.display = 'none';
+
+                answerListEl.innerHTML = answerFiles.map((f) => {
+                    const baseName = f.split('/').pop();
+                    const ext = baseName.split('.').pop().toLowerCase();
+                    const isTxt = (ext === 'txt');
+                    const isZip = (ext === 'zip');
+                    const icon = isTxt ? '📄' : isZip ? '📦' : '📎';
+                    const cls = isTxt ? 'file-type-txt' : 'file-type-dat';
+
+                    let actionBtn = '';
+                    if (isTxt) {
+                        actionBtn = `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewAnswerFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="预览参考答案" style="padding:2px 7px;font-size:13px;">👁 查看</button>`;
+                    }
+                    const downloadBtn = `<button class="btn btn-outline btn-sm" onclick="downloadSingleAnswerFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="下载参考答案" style="padding:2px 7px;font-size:13px;">⬇</button>`;
+
+                    return `<div class="data-file-row">
+                        <span class="data-file-icon">${icon}</span>
+                        <span class="data-file-name" title="${f}">${baseName}</span>
+                        <span class="data-file-ext ${cls}">.${ext}</span>
+                        ${downloadBtn}
+                        ${actionBtn}
+                    </div>`;
+                }).join('');
+
+                answerDownloadAllBtn.style.display = answerFiles.length > 1 ? '' : 'none';
+            } else {
+                answerCard.style.display = '';
+                answerListEl.innerHTML = '';
+                answerEmptyEl.style.display = '';
+                answerDownloadAllBtn.style.display = 'none';
+            }
+
             // --- PDF 区域 ---
             document.getElementById('detailPdfFileName').textContent = q.pdfFileName;
             document.getElementById('detailPdfPageTag').textContent = `第 ${q.pdfPage} 页`;
@@ -1851,7 +1978,7 @@
             }
 
             if (!pdfUrl) {
-                pdfUrl = `book/${encodeURIComponent(q.pdfFileName)}#page=${q.pdfPage}`;
+                pdfUrl = `book/${encPath(q.pdfFileName)}#page=${q.pdfPage}`;
                 console.log('  📂 回退到本地文件:', 'book/' + q.pdfFileName);
             } else {
                 pdfUrl += `#page=${q.pdfPage}`;
@@ -1923,14 +2050,17 @@
         function togglePdfMaximize() {
             const wrapper = document.querySelector('.detail-pdf-wrapper');
             const icon = document.getElementById('pdfMaxIcon');
+            const btn = document.querySelector('.pdf-max-btn');
             if (!wrapper) return;
             const isMax = wrapper.classList.toggle('pdf-maximized');
             window.__pdfMaximized = isMax;
             if (isMax) {
-                icon.innerHTML = '<rect x="2.5" y="5" width="11" height="9" rx="1"/><path d="M8.5 5V2.5H5"/>';
+                icon.innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>';
+                if (btn) btn.title = '恢复PDF';
                 document.body.style.overflow = 'hidden';
             } else {
-                icon.innerHTML = '<path d="M3 3v5h5V3H3zM11 3v5h-5V3h5zM3 13v-5h5v5H3zM13 3v5h-5V3h5zM13 13v-5h-5v5h5z"/><rect x="1.5" y="1.5" width="13" height="13" rx="1"/>';
+                icon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+                if (btn) btn.title = '最大化PDF';
                 document.body.style.overflow = '';
             }
         }
@@ -2014,23 +2144,47 @@
             }
         }
 
-        /** 将 ArrayBuffer 解码为文本（自动尝试 GBK → UTF-8） */
-        function decodeChineseText(arrayBuffer) {
-            // 中文测绘数据文件通常为 GBK/GB18030 编码，优先尝试
-            const encodings = ['gbk', 'gb18030', 'gb2312', 'utf-8'];
-            for (const enc of encodings) {
-                try {
-                    const decoder = new TextDecoder(enc, { fatal: false });
-                    const result = decoder.decode(arrayBuffer);
-                    // 如果解码结果包含常见的乱码替换字符比例过高，继续尝试下一种
-                    const replacementRatio = (result.match(/\uFFFD/g) || []).length / Math.max(result.length, 1);
-                    if (replacementRatio < 0.1) return result;
-                } catch (e) {
-                    continue;
-                }
+        /** 当前预览的原始字节缓冲区（用于编码切换） */
+        let _previewBuffer = null;
+
+        /** 根据选中的编码重新解码并渲染 */
+        function redecodePreview() {
+            const enc = document.getElementById('previewEncoding').value || 'utf-8';
+            const bodyEl = document.getElementById('previewBody');
+            if (!_previewBuffer) {
+                bodyEl.innerHTML = '<div class="preview-loading" style="color:var(--danger);">暂无数据</div>';
+                return;
             }
-            // 最终回退
-            return new TextDecoder('utf-8').decode(arrayBuffer);
+            try {
+                // 处理 UTF-8 BOM（跳过前 3 字节）
+                let raw = _previewBuffer;
+                const hasBOM = (raw[0] === 0xEF && raw[1] === 0xBB && raw[2] === 0xBF);
+                if (enc === 'utf-8-bom' && hasBOM) {
+                    raw = _previewBuffer.slice(3);
+                } else if (enc === 'utf-8-bom' && !hasBOM) {
+                    // 没有 BOM 时当作普通 UTF-8
+                }
+
+                const encodingName = enc === 'utf-8-bom' ? 'utf-8' : enc;
+                const decoder = new TextDecoder(encodingName, { fatal: false });
+                const text = decoder.decode(raw);
+                const maxLen = 500000;
+                let displayText = text;
+                let truncated = false;
+                if (text.length > maxLen) {
+                    displayText = text.substring(0, maxLen);
+                    truncated = true;
+                }
+                const escaped = displayText
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                bodyEl.innerHTML = `<pre>${escaped}${truncated ? '\n\n... (文件过大，仅显示前 ' + Math.round(maxLen/1000) + ' KB)' : ''}</pre>`;
+                // 高亮当前编码
+                document.getElementById('previewEncoding').value = enc;
+            } catch (e) {
+                bodyEl.innerHTML = `<div class="preview-loading" style="color:var(--danger);">⚠ 解码失败: ${e.message}</div>`;
+            }
         }
 
         /** 从详情页预览文本文件内容 */
@@ -2040,51 +2194,58 @@
             const titleEl = document.getElementById('previewTitle');
             const bodyEl = document.getElementById('previewBody');
 
-            // 显示弹窗
             titleEl.textContent = baseName;
             bodyEl.innerHTML = '<div class="preview-loading">⏳ 正在加载...</div>';
             overlay.style.display = '';
-
-            let text = null;
+            _previewBuffer = null;
 
             // 1. 尝试从 IndexedDB 读取
             try {
                 const entry = await dbGetFile(filePath);
                 if (entry && entry.blob && entry.blob.size > 0) {
-                    const buffer = await entry.blob.arrayBuffer();
-                    text = decodeChineseText(buffer);
+                    _previewBuffer = new Uint8Array(await entry.blob.arrayBuffer());
                 }
             } catch (e) { /* 忽略 */ }
 
             // 2. 回退：从服务器静态目录加载
-            if (text == null) {
+            if (!_previewBuffer) {
                 try {
                     const resp = await fetch(`practice-data/${filePath}`);
                     if (resp.ok) {
-                        const buffer = await resp.arrayBuffer();
-                        text = decodeChineseText(buffer);
+                        _previewBuffer = new Uint8Array(await resp.arrayBuffer());
                     }
                 } catch (e) { /* 忽略 */ }
             }
 
-            if (text != null) {
-                // 限制显示大小，避免大文件卡顿
-                const maxLen = 500000;
-                let displayText = text;
-                let truncated = false;
-                if (text.length > maxLen) {
-                    displayText = text.substring(0, maxLen);
-                    truncated = true;
+            // 自动探测编码（选中匹配的 option）
+            if (_previewBuffer) {
+                const hasBOM = (_previewBuffer[0] === 0xEF && _previewBuffer[1] === 0xBB && _previewBuffer[2] === 0xBF);
+                // 检测是否为有效 UTF-8
+                let utf8Valid = true;
+                for (let i = 0; i < _previewBuffer.length; i++) {
+                    const b = _previewBuffer[i];
+                    if (b < 0x80) continue;
+                    if (b >= 0xC2 && b <= 0xDF) {
+                        if (i+1 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i++;
+                    } else if (b >= 0xE0 && b <= 0xEF) {
+                        if (i+2 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80 || (_previewBuffer[i+2] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i+=2;
+                    } else if (b >= 0xF0 && b <= 0xF4) {
+                        if (i+3 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80 || (_previewBuffer[i+2] & 0xC0) !== 0x80 || (_previewBuffer[i+3] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i+=3;
+                    } else { utf8Valid=false; break; }
                 }
-                // 对 HTML 特殊字符做转义
-                const escaped = displayText
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
-                bodyEl.innerHTML = `<pre>${escaped}${truncated ? '\n\n... (文件过大，仅显示前 ' + Math.round(maxLen/1000) + ' KB)' : ''}</pre>`;
-            } else {
-                bodyEl.innerHTML = `<div class="preview-loading" style="color:var(--danger);">⚠ 无法加载文件: ${baseName}<br><span style="font-size:12px;color:var(--text-muted);">请确认文件已导入或存在于 practice-data 目录</span></div>`;
+                const utf8Rep = (new TextDecoder('utf-8',{fatal:false}).decode(_previewBuffer).match(/\uFFFD/g)||[]).length;
+                const gbkRep = (new TextDecoder('gbk',{fatal:false}).decode(_previewBuffer).match(/\uFFFD/g)||[]).length;
+                let autoEnc = 'utf-8';
+                if (hasBOM) autoEnc = 'utf-8-bom';
+                else if (utf8Rep === 0 && utf8Valid) autoEnc = 'utf-8';
+                else if (gbkRep < utf8Rep) autoEnc = 'gbk';
+                document.getElementById('previewEncoding').value = autoEnc;
             }
+
+            redecodePreview();
         }
 
         /** 关闭预览弹窗 */
@@ -2096,6 +2257,103 @@
         function closePreviewOverlay(e) {
             if (e.target === e.currentTarget) {
                 closePreviewModal();
+            }
+        }
+
+        // ============ 参考答案相关 ============
+
+        /** 预览参考答案 txt 文件 */
+        async function previewAnswerFile(qid, filePath) {
+            const baseName = filePath.split('/').pop();
+            const overlay = document.getElementById('previewOverlay');
+            const titleEl = document.getElementById('previewTitle');
+            const bodyEl = document.getElementById('previewBody');
+
+            titleEl.textContent = `📝 参考答案 - ${baseName}`;
+            bodyEl.innerHTML = '<div class="preview-loading">⏳ 正在加载参考答案...</div>';
+            overlay.style.display = '';
+            _previewBuffer = null;
+
+            // 1. 尝试从 IndexedDB 读取
+            try {
+                const entry = await dbGetFile(filePath);
+                if (entry && entry.blob) {
+                    _previewBuffer = new Uint8Array(await entry.blob.arrayBuffer());
+                }
+            } catch (e) { /* 忽略 */ }
+
+            // 2. 尝试从 practice-data/ 目录加载
+            if (!_previewBuffer) {
+                try {
+                    const resp = await fetch('practice-data/' + filePath);
+                    if (resp.ok) {
+                        _previewBuffer = new Uint8Array(await resp.arrayBuffer());
+                    }
+                } catch (e) { /* 忽略 */ }
+            }
+
+            // 自动探测编码
+            if (_previewBuffer) {
+                const hasBOM = (_previewBuffer[0] === 0xEF && _previewBuffer[1] === 0xBB && _previewBuffer[2] === 0xBF);
+                let utf8Valid = true;
+                for (let i = 0; i < _previewBuffer.length; i++) {
+                    const b = _previewBuffer[i];
+                    if (b < 0x80) continue;
+                    if (b >= 0xC2 && b <= 0xDF) {
+                        if (i+1 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i++;
+                    } else if (b >= 0xE0 && b <= 0xEF) {
+                        if (i+2 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80 || (_previewBuffer[i+2] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i+=2;
+                    } else if (b >= 0xF0 && b <= 0xF4) {
+                        if (i+3 >= _previewBuffer.length || (_previewBuffer[i+1] & 0xC0) !== 0x80 || (_previewBuffer[i+2] & 0xC0) !== 0x80 || (_previewBuffer[i+3] & 0xC0) !== 0x80) { utf8Valid=false; break; }
+                        i+=3;
+                    } else { utf8Valid=false; break; }
+                }
+                const utf8Rep = (new TextDecoder('utf-8',{fatal:false}).decode(_previewBuffer).match(/\uFFFD/g)||[]).length;
+                const gbkRep = (new TextDecoder('gbk',{fatal:false}).decode(_previewBuffer).match(/\uFFFD/g)||[]).length;
+                let autoEnc = 'utf-8';
+                if (hasBOM) autoEnc = 'utf-8-bom';
+                else if (utf8Rep === 0 && utf8Valid) autoEnc = 'utf-8';
+                else if (gbkRep < utf8Rep) autoEnc = 'gbk';
+                document.getElementById('previewEncoding').value = autoEnc;
+            }
+
+            redecodePreview();
+        }
+
+        /** 下载单个参考答案文件 */
+        async function downloadSingleAnswerFile(qid, filePath) {
+            const baseName = filePath.split('/').pop();
+            const ok = await downloadSingleFile(filePath);
+            if (!ok) {
+                showToast('未找到参考答案文件: ' + baseName, 'error');
+            }
+        }
+
+        /** 下载全部参考答案文件 */
+        async function downloadAllAnswers() {
+            const q = questions.find(qq => qq.id === currentDetailId);
+            if (!q || !q.answerFile) {
+                showToast('该题目暂无参考答案', 'error');
+                return;
+            }
+
+            const files = q.answerFile.split(',').map(f => f.trim()).filter(Boolean);
+            showToast(`正在下载 ${files.length} 个参考答案文件...`, 'info');
+
+            let success = 0;
+            for (const f of files) {
+                const ok = await downloadSingleFile(f);
+                if (ok) success++;
+                // 多文件时加小延迟
+                if (files.length > 1) await new Promise(r => setTimeout(r, 300));
+            }
+
+            if (success === files.length) {
+                showToast(`✅ 已下载全部 ${success} 个参考答案`, 'success');
+            } else {
+                showToast(`已下载 ${success}/${files.length} 个文件`, 'warning');
             }
         }
 
@@ -2140,422 +2398,120 @@
 
         // ============ 练习数据自动关联 ============
         // 文件路径相对于 practice-data/ 目录
+        // 书本章节号 → 练习数据文件列表（扁平文件名，与 questions.json 的 practiceDataFile 一致）
+        // key 格式: volume_chapter，如 '上册_10'、'下册_34'
+        // 文件通过 ZIP 导入时存入 IndexedDB，或从 practice-data/ 静态目录提供
         const PRACTICE_DATA_MAP = {
-            '上册': {
-                1: [ // 第10章
-                    'ch10/出租车数据1.txt',
-                    'ch10/出租车数据2.txt',
-                    'ch10/计算成果1.txt',
-                    'ch10/计算成果2.txt',
-                ],
-                2: [ // 第11章
-                    'ch11/测站坐标.txt',
-                    'ch11/运行结果.txt',
-                ],
-                3: [ // 第12章
-                    'ch12/压缩计算结果输出.txt',
-                    'ch12/原始数据.txt',
-                ],
-                4: [ // 第13章
-                    'ch13/计算成果.txt',
-                    'ch13/路径数据.txt',
-                ],
-                5: [ // 第14章
-                    'ch14/时间数据.txt',
-                    'ch14/计算结果.txt',
-                ],
-                6: [ // 第15章
-                    'ch15/coord.txt',
-                    'ch15/结果.txt',
-                ],
-                7: [ // 第16章
-                    'ch16/参考答案.txt',
-                    'ch16/形变观测数据.txt',
-                ],
-                8: [ // 第17章
-                    'ch17/M矩阵.txt',
-                    'ch17/N矩阵.txt',
-                    'ch17/res.txt',
-                ],
-                9: [ // 第18章
-                    'ch18/NEU.dat',
-                    'ch18/XYZ.dat',
-                    'ch18/NEU_1.dat',
-                    'ch18/XYZ_1.dat',
-                ],
-                10: [ // 第19章
-                    'ch19/卫星轨道数据.txt',
-                    'ch19/计算成果.txt',
-                ],
-                11: ['ch20/坐标信息.txt'], // 第20章
-                13: [ // 第22章
-                    'ch22/0624CH67#连续梁.DAT',
-                    'ch22/0624CH67#连续梁_1.DAT',
-                    'ch22/手簿_X1&X3.xls',
-                    'ch22/手簿_X3&X3.xls',
-                    'ch22/手簿_X1&X3_1.xls',
-                    'ch22/手簿_X3&X3_1.xls',
-                ],
-                14: [ // 第23章
-                    'ch23/bhl1.txt',
-                    'ch23/测试数据说明.txt',
-                ],
-                16: [ // 第25章
-                    'ch25/3度带转换6度带坐标.txt',
-                    'ch25/6度带转换3度带坐标.txt',
-                ],
-                17: [ // 第26章
-                    'ch26/BackMeetSurvry.txt',
-                    'ch26/DistMeetSurvry.txt',
-                    'ch26/ForwMeetSurvry.txt',
-                    'ch26/GPSContrPoint.txt',
-                    'ch26/计算成果.txt',
-                    'ch26/计算成果Hand.txt',
-                ],
-                18: [ // 第27章
-                    'ch27/Result.txt',
-                    'ch27/观测数据.txt',
-                ],
-                19: [ // 第28章
-                    'ch28/1.txt',
-                    'ch28/2.txt',
-                ],
-                20: [ // 第29章
-                    'ch29/测试.txt',
-                    'ch29/输出计算报告.txt',
-                ],
-                21: [ // 第30章
-                    'ch30/3333.txt',
-                    'ch30/散点数据.txt',
-                    'ch30/校园地形图.txt',
-                ],
-                22: [ // 第31章
-                    'ch31/测试数据1.txt',
-                    'ch31/测试数据2.txt',
-                ],
-                23: [ // 第32章
-                    'ch32/水准点数据.txt',
-                    'ch32/水准路线数据.txt',
-                ],
-                24: ['ch33/123345.txt'], // 第33章
-            },
-            '下册': {
-                1: ['ch34/样例数据.txt'], // 第34章
-                2: [ // 第35章
-                    'ch35/坐标数据.txt',
-                    'ch35/报告.txt',
-                ],
-                3: [ // 第36章
-                    'ch36/data.txt',
-                    'ch36/report.txt',
-                ],
-                4: [ // 第37章
-                    'ch37/1.txt',
-                    'ch37/2.txt',
-                ],
-                5: [ // 第38章
-                    'ch38/GRID数据.txt',
-                    'ch38/报告.txt',
-                    'ch38/1m.dxf',
-                ],
-                6: [ // 第39章
-                    'ch39/反算数据.txt',
-                    'ch39/正算数据.txt',
-                ],
-                7: [ // 第40章
-                    'ch40/ECF15MIN.txt',
-                    'ch40/ECF5MIN.txt',
-                    'ch40/Chebyshev_Result.txt',
-                    'ch40/Lagrange_Result.txt',
-                    'ch40/Legendre_Result.txt',
-                    'ch40/Max_Error.txt',
-                    'ch40/Mean_Error.txt',
-                    'ch40/Min_Error.txt',
-                    'ch40/Neville_Result.txt',
-                ],
-                8: ['ch41/data.txt'], // 第41章
-                9: [ // 第42章
-                    'ch42/data.txt',
-                    'ch42/以M0为中间点内插的平面坐标和高程.txt',
-                    'ch42/以M1为中间点内插的平面坐标和高程.txt',
-                    'ch42/内插K1点高程.txt',
-                    'ch42/坐标方位角计算报告.txt',
-                    'ch42/梯形面积.txt',
-                    'ch42/纵断面的总长度.txt',
-                    'ch42/纵断面计算报告.txt',
-                ],
-                10: [ // 第43章
-                    'ch43/道路曲线数据.txt',
-                    'ch43/道路曲线计算结果报告.txt',
-                    'ch43/道路曲线.dxf',
-                ],
-                11: [ // 第44章
-                    'ch44/GPS伪距计算结果.txt',
-                    'ch44/GPS卫星数据.txt',
-                ],
-                12: [ // 第45章
-                    'ch45/011022016036_binfo.txt',
-                    'ch45/011022016036_pinfo.txt',
-                    'ch45/_0112637.zsd-_0122637.zsd.txt',
-                    'ch45/_0112637.zsd-_0212637.zsd.txt',
-                    'ch45/_0112637.zsd-_0222637.zsd.txt',
-                    'ch45/_0122637.zsd-_0212637.zsd.txt',
-                    'ch45/_0122637.zsd-_0222637.zsd.txt',
-                    'ch45/_0122641.zsd-_0132641.zsd.txt',
-                    'ch45/_0122641.zsd-_0142641.zsd.txt',
-                    'ch45/_0122641.zsd-_0222641.zsd.txt',
-                    'ch45/_0132641.zsd-_0142641.zsd.txt',
-                    'ch45/_0132641.zsd-_0222641.zsd.txt',
-                    'ch45/_0142641.zsd-_0222641.zsd.txt',
-                    'ch45/_0142642.zsd-_0152642.zsd.txt',
-                    'ch45/_0142642.zsd-_0222642.zsd.txt',
-                    'ch45/_0142642.zsd-_0232642.zsd.txt',
-                    'ch45/_0152642.zsd-_0222642.zsd.txt',
-                    'ch45/_0152642.zsd-_0232642.zsd.txt',
-                    'ch45/_0152643.zsd-_0162643.zsd.txt',
-                    'ch45/_0152643.zsd-_0232643.zsd.txt',
-                    'ch45/_0152643.zsd-_0242643.zsd.txt',
-                    'ch45/_0162643.zsd-_0232643.zsd.txt',
-                    'ch45/_0162643.zsd-_0242643.zsd.txt',
-                    'ch45/_0162644.zsd-_0172644.zsd.txt',
-                    'ch45/_0162644.zsd-_0242644.zsd.txt',
-                    'ch45/_0162644.zsd-_0252644.zsd.txt',
-                    'ch45/_0172644.zsd-_0242644.zsd.txt',
-                    'ch45/_0172644.zsd-_0252644.zsd.txt',
-                    'ch45/_0212634.zsd-_0222634.zsd.txt',
-                    'ch45/_0212634.zsd-_0312634.zsd.txt',
-                    'ch45/_0212634.zsd-_0322634.zsd.txt',
-                    'ch45/_0212637.zsd-_0222637.zsd.txt',
-                    'ch45/_0222634.zsd-_0312634.zsd.txt',
-                    'ch45/_0222634.zsd-_0322634.zsd.txt',
-                    'ch45/_0222635.zsd-_0312635.zsd.txt',
-                    'ch45/_0222635.zsd-_0322635.zsd.txt',
-                    'ch45/_0222635.zsd-_0332635.zsd.txt',
-                    'ch45/_0222636.zsd-_0232636.zsd.txt',
-                    'ch45/_0222636.zsd-_0332636.zsd.txt',
-                    'ch45/_0222636.zsd-_0342636.zsd.txt',
-                    'ch45/_0222642.zsd-_0232642.zsd.txt',
-                    'ch45/_0232636.zsd-_0332636.zsd.txt',
-                    'ch45/_0232636.zsd-_0342636.zsd.txt',
-                    'ch45/_0232643.zsd-_0242643.zsd.txt',
-                    'ch45/_0232646.zsd-_0242646.zsd.txt',
-                    'ch45/_0232646.zsd-_0342646.zsd.txt',
-                    'ch45/_0232646.zsd-_0352646.zsd.txt',
-                    'ch45/_0232647.zsd-_0242647.zsd.txt',
-                    'ch45/_0242644.zsd-_0252644.zsd.txt',
-                    'ch45/_0242645.zsd-_0252645.zsd.txt',
-                    'ch45/_0242645.zsd-_0352645.zsd.txt',
-                    'ch45/_0242645.zsd-_0362645.zsd.txt',
-                    'ch45/_0242646.zsd-_0342646.zsd.txt',
-                    'ch45/_0242646.zsd-_0352646.zsd.txt',
-                    'ch45/_0252645.zsd-_0352645.zsd.txt',
-                    'ch45/_0252645.zsd-_0362645.zsd.txt',
-                    'ch45/_0312634.zsd-_0322634.zsd.txt',
-                    'ch45/_0312635.zsd-_0322635.zsd.txt',
-                    'ch45/_0312635.zsd-_0332635.zsd.txt',
-                    'ch45/_0322635.zsd-_0332635.zsd.txt',
-                    'ch45/_0332636.zsd-_0342636.zsd.txt',
-                    'ch45/_0342646.zsd-_0352646.zsd.txt',
-                    'ch45/_0352645.zsd-_0362645.zsd.txt',
-                ],
-                13: ['ch46/data.txt'], // 第46章
-                14: [ // 第47章
-                    'ch47/单导线(闭合).txt',
-                    'ch47/单导线(附和).txt',
-                    'ch47/4平差成果.txt',
-                    'ch47/单导线(闭合).xls',
-                    'ch47/单导线(附和).xls',
-                    'ch47/3平差成果.xls',
-                    'ch47/2平差成果.dxf',
-                    'ch47/4平差成果_1.txt',
-                    'ch47/3平差成果_1.xls',
-                    'ch47/2平差成果_1.dxf',
-                ],
-                15: [ // 第48章
-                    'ch48/111.txt',
-                    'ch48/tryexp-0.txt',
-                    'ch48/tryexp1-全测.txt',
-                    'ch48/tryexp1-测角.txt',
-                    'ch48/tryexp1-测距.txt',
-                    'ch48/tryexp1-部分.txt',
-                    'ch48/000-全-自由设站算例-角度-距离.txt',
-                    'ch48/0全-自由设站算例-角度-距离.txt',
-                    'ch48/0半-自由设站算例-角度-距离.txt',
-                    'ch48/0自由设站算例-角度.txt',
-                    'ch48/0自由设站算例-距离.txt',
-                    'ch48/1-全-自由设站算例-角度-距离.txt',
-                ],
-                16: ['ch49/测试数据.txt'], // 第49章
-                17: [ // 第50章
-                    'ch50/131204.txt',
-                    'ch50/141210.txt',
-                ],
-                18: [ // 第51章
-                    'ch51/实测坐标.txt',
-                    'ch51/线路设计参数.txt',
-                ],
-                19: [ // 第52章
-                    'ch52/目视解译结果.txt',
-                    'ch52/Text_DataRoad1.shp',
-                    'ch52/Text_DataRoad2.shp',
-                    'ch52/报告.txt',
-                    'ch52/矢量图形.dxf',
-                ],
-                20: ['ch53/EX2_11算例.xlsx'], // 第53章
-                21: [ // 第54章
-                    'ch54/报告文件.txt',
-                    'ch54/边坡实测数据J7点.txt',
-                    'ch54/绘图文件.emf',
-                ],
-                22: [ // 第55章
-                    'ch55/igs19994.sp3',
-                    'ch55/igs19994.clk',
-                    'ch55/igs19997.erp',
-                    'ch55/bjfs1230.18o',
-                    'ch55/brdc1230.18n',
-                    'ch55/igs14_1958.atx',
-                    'ch55/P1C1.DCB',
-                    'ch55/P1P2_GPS.DCB',
-                ],
-                27: [ // 第60章
-                    'ch60/guanggu.txt',
-                    'ch60/guanggu711.txt',
-                    'ch60/guanggu712.txt',
-                    'ch60/guanggu713.txt',
-                    'ch60/guanggu714.txt',
-                    'ch60/guanggu715.txt',
-                    'ch60/guanggu716.txt',
-                    'ch60/guanggu717.txt',
-                    'ch60/guanggu718.txt',
-                    'ch60/guanggu719.txt',
-                    'ch60/guanggu720.txt',
-                    'ch60/guanggu721.txt',
-                    'ch60/guanggu722.txt',
-                    'ch60/hanyang.txt',
-                    'ch60/hanyang711.txt',
-                    'ch60/hanyang712.txt',
-                    'ch60/hanyang713.txt',
-                    'ch60/hanyang714.txt',
-                    'ch60/hanyang715.txt',
-                    'ch60/hanyang716.txt',
-                    'ch60/hanyang717.txt',
-                    'ch60/hanyang718.txt',
-                    'ch60/hanyang719.txt',
-                    'ch60/hanyang720.txt',
-                    'ch60/hanyang721.txt',
-                    'ch60/hanyang722.txt',
-                    'ch60/jianghan.txt',
-                    'ch60/jianghan711.txt',
-                    'ch60/jianghan712.txt',
-                    'ch60/jianghan713.txt',
-                    'ch60/jianghan714.txt',
-                    'ch60/jianghan715.txt',
-                    'ch60/jianghan716.txt',
-                    'ch60/jianghan717.txt',
-                    'ch60/jianghan718.txt',
-                    'ch60/jianghan719.txt',
-                    'ch60/jianghan720.txt',
-                    'ch60/jianghan721.txt',
-                    'ch60/jianghan722.txt',
-                    'ch60/ptname-guanggu.txt',
-                    'ch60/ptname-jianghan.txt',
-                    'ch60/mine.txt',
-                    'ch60/mine0830.txt',
-                    'ch60/mine0831.txt',
-                    'ch60/mine0901.txt',
-                    'ch60/mine0902.txt',
-                    'ch60/mine0903.txt',
-                    'ch60/mine_1.txt',
-                    'ch60/080980.txt',
-                    'ch60/1111.txt',
-                    'ch60/666.txt',
-                    'ch60/abc.txt',
-                    'ch60/abcd.txt',
-                    'ch60/baibai.txt',
-                    'ch60/bailu.txt',
-                    'ch60/hua.txt',
-                    'ch60/huang.txt',
-                    'ch60/huanong.txt',
-                    'ch60/licha.txt',
-                    'ch60/mine1.txt',
-                    'ch60/mine_2.txt',
-                    'ch60/mine_3.txt',
-                    'ch60/mine_4.txt',
-                    'ch60/guanggu_1.txt',
-                    'ch60/guanggucenter.txt',
-                    'ch60/hanyang_1.txt',
-                    'ch60/hanyangcenter.txt',
-                    'ch60/jianghan_1.txt',
-                    'ch60/jianghancenter.txt',
-                    'ch60/guanggu711match0708INAPC.txt',
-                    'ch60/guanggu711match0809INAPC.txt',
-                    'ch60/guanggu711match0910INAPC.txt',
-                    'ch60/guanggu711match1011INAPC.txt',
-                    'ch60/guanggu711match1112INAPC.txt',
-                ],
-                28: [ // 第61章
-                    'ch61/Data1000.txt',
-                    'ch61/Data6372.txt',
-                    'ch61/兴趣点信息.txt',
-                    'ch61/犯罪数据.txt',
-                    'ch61/统计结果.txt',
-                ],
-            }
+            '真题_1': [
+                'point.txt',
+                '正式数据.txt',
+                'data.txt',
+            ],
+            // ===== 上册 基础篇 (ch10-21) =====
+            '上册_10': ['ch10/出租车数据1.txt', 'ch10/出租车数据2.txt'],
+            '上册_11': ['ch11/测站坐标.txt'],
+            '上册_12': ['ch12/原始数据.txt'],
+            '上册_13': ['ch13/路径数据.txt'],
+            '上册_14': ['ch14/时间数据.txt'],
+            '上册_15': ['ch15/coord.txt'],
+            '上册_16': ['ch16/形变观测数据.txt'],
+            '上册_17': ['ch17/M矩阵.txt', 'ch17/N矩阵.txt', 'ch17/res.txt'],
+            '上册_18': ['ch18/NEU.dat', 'ch18/XYZ.dat'],
+            '上册_19': ['ch19/卫星轨道数据.txt'],
+            '上册_20': ['ch20/坐标信息.txt'],
+            // ch21(矩阵基本运算): 无练习数据
+            // ===== 下册 进阶篇 (ch22-33) =====
+            '下册_22': ['ch22/0624CH67#连续梁.DAT', 'ch22/手簿_X1&X3.xls', 'ch22/手簿_X3&X3.xls'],
+            '下册_23': ['ch23/bhl1.txt', 'ch23/测试数据说明.txt'],
+            // ch24(图幅编号计算): 无练习数据
+            '下册_25': ['ch25/3度带转换6度带坐标.txt', 'ch25/6度带转换3度带坐标.txt'],
+            '下册_26': ['ch26/BackMeetSurvry.txt', 'ch26/DistMeetSurvry.txt', 'ch26/ForwMeetSurvry.txt', 'ch26/GPSContrPoint.txt'],
+            '下册_27': ['ch27/观测数据.txt'],
+            '下册_28': ['ch28/1.txt', 'ch28/2.txt'],
+            '下册_29': ['ch29/测试.txt'],
+            '下册_30': ['ch30/散点数据.txt', 'ch30/校园地形图.txt', 'ch30/3333.txt'],
+            '下册_31': ['ch31/测试数据1.txt', 'ch31/测试数据2.txt'],
+            '下册_32': ['ch32/水准点数据.txt', 'ch32/水准路线数据.txt'],
+            '下册_33': ['ch33/123345.txt'],
+            // ===== 下册 竞赛篇 (ch34-51) =====
+            '下册_34': ['ch34/样例数据.txt'],
+            '下册_35': ['ch35/坐标数据.txt'],
+            '下册_36': ['ch36/data.txt'],
+            '下册_37': ['ch37/1.txt', 'ch37/2.txt'],
+            '下册_38': ['ch38/GRID数据.txt', 'ch38/报告.txt', 'ch38/1m.dxf'],
+            '下册_39': ['ch39/正算数据.txt', 'ch39/反算数据.txt'],
+            '下册_40': ['ch40/ECF15MIN.txt', 'ch40/ECF5MIN.txt', 'ch40/Chebyshev_Result.txt', 'ch40/Lagrange_Result.txt', 'ch40/Legendre_Result.txt', 'ch40/Neville_Result.txt', 'ch40/Max_Error.txt', 'ch40/Mean_Error.txt', 'ch40/Min_Error.txt'],
+            '下册_41': ['ch41/data.txt'],
+            '下册_42': ['ch42/data.txt', 'ch42/梯形面积.txt', 'ch42/纵断面计算报告.txt', 'ch42/坐标方位角计算报告.txt', 'ch42/纵断面的总长度.txt', 'ch42/内插K1点高程.txt', 'ch42/以M0为中间点内插的平面坐标和高程.txt', 'ch42/以M1为中间点内插的平面坐标和高程.txt'],
+            '下册_43': ['ch43/道路曲线数据.txt', 'ch43/道路曲线.dxf'],
+            '下册_44': ['ch44/GPS卫星数据.txt'],
+            '下册_45': ['ch45/011022016036_binfo.txt', 'ch45/011022016036_pinfo.txt', 'ch45/_0112637.zsd-_0122637.zsd.txt', 'ch45/_0112637.zsd-_0212637.zsd.txt', 'ch45/_0112637.zsd-_0222637.zsd.txt', 'ch45/_0122637.zsd-_0212637.zsd.txt', 'ch45/_0122637.zsd-_0222637.zsd.txt', 'ch45/_0122641.zsd-_0132641.zsd.txt', 'ch45/_0122641.zsd-_0142641.zsd.txt', 'ch45/_0122641.zsd-_0222641.zsd.txt', 'ch45/_0132641.zsd-_0142641.zsd.txt', 'ch45/_0132641.zsd-_0222641.zsd.txt', 'ch45/_0142641.zsd-_0222641.zsd.txt', 'ch45/_0142642.zsd-_0152642.zsd.txt', 'ch45/_0142642.zsd-_0222642.zsd.txt', 'ch45/_0142642.zsd-_0232642.zsd.txt', 'ch45/_0152642.zsd-_0222642.zsd.txt', 'ch45/_0152642.zsd-_0232642.zsd.txt', 'ch45/_0152643.zsd-_0162643.zsd.txt', 'ch45/_0152643.zsd-_0232643.zsd.txt', 'ch45/_0152643.zsd-_0242643.zsd.txt', 'ch45/_0162643.zsd-_0232643.zsd.txt', 'ch45/_0162643.zsd-_0242643.zsd.txt', 'ch45/_0162644.zsd-_0172644.zsd.txt', 'ch45/_0162644.zsd-_0242644.zsd.txt', 'ch45/_0162644.zsd-_0252644.zsd.txt', 'ch45/_0172644.zsd-_0242644.zsd.txt', 'ch45/_0172644.zsd-_0252644.zsd.txt', 'ch45/_0212634.zsd-_0222634.zsd.txt', 'ch45/_0212634.zsd-_0312634.zsd.txt', 'ch45/_0212634.zsd-_0322634.zsd.txt', 'ch45/_0212637.zsd-_0222637.zsd.txt', 'ch45/_0222634.zsd-_0312634.zsd.txt', 'ch45/_0222634.zsd-_0322634.zsd.txt', 'ch45/_0222635.zsd-_0312635.zsd.txt', 'ch45/_0222635.zsd-_0322635.zsd.txt', 'ch45/_0222635.zsd-_0332635.zsd.txt', 'ch45/_0222636.zsd-_0232636.zsd.txt', 'ch45/_0222636.zsd-_0332636.zsd.txt', 'ch45/_0222636.zsd-_0342636.zsd.txt', 'ch45/_0222642.zsd-_0232642.zsd.txt', 'ch45/_0232636.zsd-_0332636.zsd.txt', 'ch45/_0232636.zsd-_0342636.zsd.txt', 'ch45/_0232643.zsd-_0242643.zsd.txt', 'ch45/_0232646.zsd-_0242646.zsd.txt', 'ch45/_0232646.zsd-_0342646.zsd.txt', 'ch45/_0232646.zsd-_0352646.zsd.txt', 'ch45/_0232647.zsd-_0242647.zsd.txt', 'ch45/_0242644.zsd-_0252644.zsd.txt', 'ch45/_0242645.zsd-_0252645.zsd.txt', 'ch45/_0242645.zsd-_0352645.zsd.txt', 'ch45/_0242645.zsd-_0362645.zsd.txt', 'ch45/_0242646.zsd-_0342646.zsd.txt', 'ch45/_0242646.zsd-_0352646.zsd.txt', 'ch45/_0252645.zsd-_0352645.zsd.txt', 'ch45/_0252645.zsd-_0362645.zsd.txt', 'ch45/_0312634.zsd-_0322634.zsd.txt', 'ch45/_0312635.zsd-_0322635.zsd.txt', 'ch45/_0312635.zsd-_0332635.zsd.txt', 'ch45/_0322635.zsd-_0332635.zsd.txt', 'ch45/_0332636.zsd-_0342636.zsd.txt', 'ch45/_0342646.zsd-_0352646.zsd.txt', 'ch45/_0352645.zsd-_0362645.zsd.txt'],
+            '下册_46': ['ch46/data.txt'],
+            '下册_47': ['ch47/单导线(闭合).txt', 'ch47/单导线(闭合).xls', 'ch47/单导线(附和).txt', 'ch47/单导线(附和).xls'],
+            '下册_48': ['ch48/000-全-自由设站算例-角度-距离.txt', 'ch48/0全-自由设站算例-角度-距离.txt', 'ch48/0半-自由设站算例-角度-距离.txt', 'ch48/0自由设站算例-角度.txt', 'ch48/0自由设站算例-距离.txt', 'ch48/1-全-自由设站算例-角度-距离.txt', 'ch48/111.txt', 'ch48/tryexp-0.txt', 'ch48/tryexp1-部分.txt', 'ch48/tryexp1-测角.txt', 'ch48/tryexp1-测距.txt', 'ch48/tryexp1-全测.txt'],
+            '下册_49': ['ch49/测试数据.txt'],
+            '下册_50': ['ch50/131204.txt', 'ch50/141210.txt'],
+            '下册_51': ['ch51/实测坐标.txt', 'ch51/线路设计参数.txt'],
+            // ===== 下册 创新篇 (ch52-61) =====
+            '下册_52': ['ch52/报告.txt', 'ch52/目视解译结果.txt', 'ch52/矢量图形.dxf', 'ch52/Text_DataRoad1.shp', 'ch52/Text_DataRoad2.shp'],
+            '下册_53': ['ch53/EX2_11算例.xlsx'],
+            '下册_54': ['ch54/边坡实测数据J7点.txt', 'ch54/绘图文件.emf'],
+            '下册_55': ['ch55/bjfs1230.18o', 'ch55/brdc1230.18n', 'ch55/igs14_1958.atx', 'ch55/igs19994.clk', 'ch55/igs19994.sp3', 'ch55/igs19997.erp', 'ch55/P1C1.DCB', 'ch55/P1P2_GPS.DCB'],
+            '下册_60': ['ch60/080980.txt', 'ch60/1111.txt', 'ch60/666.txt', 'ch60/abc.txt', 'ch60/abcd.txt', 'ch60/baibai.txt', 'ch60/bailu.txt', 'ch60/guanggu.txt', 'ch60/guanggu711.txt', 'ch60/guanggu711match0708INAPC.txt', 'ch60/guanggu711match0809INAPC.txt', 'ch60/guanggu711match0910INAPC.txt', 'ch60/guanggu711match1011INAPC.txt', 'ch60/guanggu711match1112INAPC.txt', 'ch60/guanggu712.txt', 'ch60/guanggu713.txt', 'ch60/guanggu714.txt', 'ch60/guanggu715.txt', 'ch60/guanggu716.txt', 'ch60/guanggu717.txt', 'ch60/guanggu718.txt', 'ch60/guanggu719.txt', 'ch60/guanggu720.txt', 'ch60/guanggu721.txt', 'ch60/guanggu722.txt', 'ch60/guanggucenter.txt', 'ch60/hanyang.txt', 'ch60/hanyang711.txt', 'ch60/hanyang712.txt', 'ch60/hanyang713.txt', 'ch60/hanyang714.txt', 'ch60/hanyang715.txt', 'ch60/hanyang716.txt', 'ch60/hanyang717.txt', 'ch60/hanyang718.txt', 'ch60/hanyang719.txt', 'ch60/hanyang720.txt', 'ch60/hanyang721.txt', 'ch60/hanyang722.txt', 'ch60/hanyangcenter.txt', 'ch60/hua.txt', 'ch60/huang.txt', 'ch60/huanong.txt', 'ch60/jianghan.txt', 'ch60/jianghan711.txt', 'ch60/jianghan712.txt', 'ch60/jianghan713.txt', 'ch60/jianghan714.txt', 'ch60/jianghan715.txt', 'ch60/jianghan716.txt', 'ch60/jianghan717.txt', 'ch60/jianghan718.txt', 'ch60/jianghan719.txt', 'ch60/jianghan720.txt', 'ch60/jianghan721.txt', 'ch60/jianghan722.txt', 'ch60/jianghancenter.txt', 'ch60/licha.txt', 'ch60/mine.txt', 'ch60/mine0830.txt', 'ch60/mine0831.txt', 'ch60/mine0901.txt', 'ch60/mine0902.txt', 'ch60/mine0903.txt', 'ch60/mine1.txt', 'ch60/ptname-guanggu.txt', 'ch60/ptname-jianghan.txt'],
+            '下册_61': ['ch61/犯罪数据.txt', 'ch61/兴趣点信息.txt', 'ch61/Data1000.txt', 'ch61/Data6372.txt'],
         };
 
-        // 书本章节号 → PRACTICE_DATA_MAP 的 (卷册, key) 转换
-        // 书上编号体系：上册(教学篇1-10 + 基础篇10-21)，下册(进阶篇22-33 + 竞赛篇34-51 + 创新篇52-61)
-        // v1文件(Part1+Part2)在 PRACTICE_DATA_MAP['上册']，v2文件(Part3+Part4)在 PRACTICE_DATA_MAP['下册']
+        // 练习数据对应的参考答案文件映射
+        const ANSWER_MAP = {
+            '上册_10': ['ch10/计算成果1.txt', 'ch10/计算成果2.txt'],
+            '上册_11': ['ch11/运行结果.txt'],
+            '上册_12': ['ch12/压缩计算结果输出.txt'],
+            '上册_13': ['ch13/计算成果.txt'],
+            '上册_14': ['ch14/计算结果.txt'],
+            '上册_15': ['ch15/结果.txt'],
+            '上册_16': ['ch16/参考答案.txt'],
+            '上册_18': ['ch18/计算结果.dat'],
+            '上册_19': ['ch19/计算成果.txt'],
+            '下册_26': ['ch26/计算成果.txt', 'ch26/计算成果Hand.txt'],
+            '下册_27': ['ch27/Result.txt'],
+            '下册_29': ['ch29/输出计算报告.txt'],
+            '下册_35': ['ch35/报告.txt'],
+            '下册_36': ['ch36/report.txt'],
+            '下册_43': ['ch43/道路曲线计算结果报告.txt'],
+            '下册_44': ['ch44/GPS伪距计算结果.txt'],
+            '下册_47': ['ch47/2平差成果.dxf', 'ch47/3平差成果.xls', 'ch47/4平差成果.txt'],
+            '下册_54': ['ch54/报告文件.txt'],
+            '下册_61': ['ch61/统计结果.txt'],
+        };
+
+        // 书本章节号 → PRACTICE_DATA_MAP 查询
+        // key 格式: volume_chapter，如 '上册_10'、'下册_34'
         function resolvePracticeData(volume, bookChapter) {
             const ch = Number(bookChapter);
             if (isNaN(ch)) return null;
-
-            if (volume === '上册') {
-                // 教学篇 1-10：无练习数据；基础篇 10-21 → Part1 → v1 → 上册 map key=ch-9
-                if (ch >= 10 && ch <= 21) {
-                    const mapKey = ch - 9;  // 第10章→1, 第15章→6, 第21章→12
-                    const volMap = PRACTICE_DATA_MAP['上册'];
-                    return volMap ? (volMap[mapKey] || volMap[String(mapKey)] || null) : null;
-                }
-                return null;
-            }
-
-            if (volume === '下册') {
-                let mapVol, mapKey;
-                if (ch >= 22 && ch <= 33) {
-                    // 进阶篇 → Part2 → v1文件 → PRACTICE_DATA_MAP['上册']
-                    mapVol = '上册';
-                    mapKey = ch - 9;  // 第22章→13, 第28章→19, 第33章→24
-                } else if (ch >= 34 && ch <= 61) {
-                    // 竞赛篇(34-51) + 创新篇(52-61) → Part3+Part4 → v2文件 → PRACTICE_DATA_MAP['下册']
-                    mapVol = '下册';
-                    mapKey = ch - 33;  // 第34章→1, 第39章→6, 第52章→19
-                } else {
-                    return null;
-                }
-                const volMap = PRACTICE_DATA_MAP[mapVol];
-                return volMap ? (volMap[mapKey] || volMap[String(mapKey)] || null) : null;
-            }
-
-            return null;
+            const key = `${volume}_${ch}`;
+            return PRACTICE_DATA_MAP[key] || null;
         }
 
         // 静默版：页面加载时自动关联，不弹 toast
+        // 强制使用 PRACTICE_DATA_MAP 中的扁平文件名更新 practiceDataFile
         function autoApplyPracticeData() {
             if (!questions.length) return;
             let updated = 0;
             const missed = [];
             questions.forEach(q => {
-                if (q.practiceDataFile) return;                         // 已有关联，跳过
                 if (!q.volume || q.chapter == null) return;
                 const files = resolvePracticeData(q.volume, q.chapter);
                 if (!files || files.length === 0) { missed.push(`${q.volume} ch${q.chapter}`); return; }
-                q.practiceDataFile = files.join(',');
-                updated++;
+                const newValue = files.join(',');
+                if (q.practiceDataFile !== newValue) {
+                    q.practiceDataFile = newValue;
+                    updated++;
+                }
             });
             if (updated > 0) {
                 saveData();
-                console.log(`[自动关联] 已为 ${updated} 道题目自动关联练习数据。${missed.length > 0 ? '未匹配: ' + missed.join(', ') : ''}`);
+                console.log(`[自动关联] 已为 ${updated} 道题目更新练习数据路径。${missed.length > 0 ? '未匹配: ' + missed.join(', ') : ''}`);
             } else if (missed.length > 0) {
                 console.log(`[自动关联] 无题目成功关联。未匹配: ${missed.join(', ')}。请检查题目卷册/章节字段。`);
             }
@@ -2593,6 +2549,33 @@
                 showToast(`所有 ${matched} 道题目已关联完成，无需更新`, 'info');
             } else {
                 showToast(`未找到可关联的题目（请确认题目包含正确的卷册和章节信息）`, 'error');
+            }
+        }
+
+        function resolveAnswerData(volume, bookChapter) {
+            const ch = Number(bookChapter);
+            if (isNaN(ch)) return null;
+            const key = `${volume}_${ch}`;
+            return ANSWER_MAP[key] || null;
+        }
+
+        // 静默版：页面加载时自动关联参考答案，不弹 toast
+        function autoApplyAnswerData() {
+            if (!questions.length) return;
+            let updated = 0;
+            questions.forEach(q => {
+                if (!q.volume || q.chapter == null) return;
+                const files = resolveAnswerData(q.volume, q.chapter);
+                if (!files || files.length === 0) return;
+                const newValue = files.join(',');
+                if (q.answerFile !== newValue) {
+                    q.answerFile = newValue;
+                    updated++;
+                }
+            });
+            if (updated > 0) {
+                saveData();
+                console.log(`[自动关联] 已为 ${updated} 道题目关联参考答案。`);
             }
         }
 
@@ -2710,6 +2693,7 @@
         // ============ 管理后台 ============
         let pendingPdfFile = null;  // 暂存待上传的 PDF 文件
         let pendingPracticeFiles = [];  // 暂存待上传的练习数据文件
+        let pendingAnswerFiles = [];  // 暂存待上传的参考答案文件
 
         function renderAdmin() {
             const tbody = document.getElementById('adminTableBody');
@@ -2754,6 +2738,7 @@
             editingId = null;
             pendingPdfFile = null;
             pendingPracticeFiles = [];
+            pendingAnswerFiles = [];
             document.getElementById('formTitle').textContent = '新增题目';
             document.getElementById('editId').value = '';
             document.getElementById('editId').removeAttribute('readonly');
@@ -2766,14 +2751,20 @@
             document.getElementById('editPdfPage').value = '';
             document.getElementById('editPdfFile').value = '';
             document.getElementById('pdfFileStatus').style.display = 'none';
+            document.getElementById('pdfDbStatus').style.display = 'none';
             document.getElementById('editPdfFileName').value = '测绘程序设计（上册）.pdf';
             document.getElementById('editPdfOffset').value = '7';
             document.getElementById('editPracticeFile').value = '';
             document.getElementById('editPracticeUpload').value = '';
             document.getElementById('practiceFileStatus').style.display = 'none';
+            document.getElementById('editAnswerFile').value = '';
+            document.getElementById('editAnswerUpload').value = '';
+            document.getElementById('answerFileStatus').style.display = 'none';
             document.getElementById('editDifficulty').value = '中等';
             document.getElementById('editTags').value = '';
             document.getElementById('pdfMappingPreview').textContent = '';
+            // 检查数据库中是否已有默认 PDF
+            checkPdfDbStatus('测绘程序设计（上册）.pdf');
             document.getElementById('editFormCard').style.display = 'block';
             document.getElementById('editFormCard').scrollIntoView({ behavior: 'smooth' });
             refreshDatalists();
@@ -2787,6 +2778,7 @@
             editingId = id;
             pendingPdfFile = null;
             pendingPracticeFiles = [];
+            pendingAnswerFiles = [];
             document.getElementById('formTitle').textContent = '编辑题目';
             document.getElementById('editId').value = q.id;
             document.getElementById('editId').setAttribute('readonly', 'readonly');
@@ -2804,9 +2796,14 @@
             document.getElementById('editPracticeFile').value = q.practiceDataFile || '';
             document.getElementById('editPracticeUpload').value = '';
             document.getElementById('practiceFileStatus').style.display = 'none';
+            document.getElementById('editAnswerFile').value = q.answerFile || '';
+            document.getElementById('editAnswerUpload').value = '';
+            document.getElementById('answerFileStatus').style.display = 'none';
             document.getElementById('editDifficulty').value = q.difficulty || '中等';
             document.getElementById('editTags').value = q.tags ? q.tags.join(', ') : '';
             autoCalcPdfPage();
+            // 检查数据库中是否已有该 PDF
+            checkPdfDbStatus(q.pdfFileName);
             document.getElementById('editFormCard').style.display = 'block';
             document.getElementById('editFormCard').scrollIntoView({ behavior: 'smooth' });
             refreshDatalists();
@@ -2816,7 +2813,22 @@
             editingId = null;
             pendingPdfFile = null;
             pendingPracticeFiles = [];
+            pendingAnswerFiles = [];
+            document.getElementById('pdfDbStatus').style.display = 'none';
             document.getElementById('editFormCard').style.display = 'none';
+        }
+
+        // 获取章节路径前缀（如 ch16/）
+        function getChapterPrefix() {
+            const ch = parseInt(document.getElementById('editChapter').value) || 0;
+            const vol = document.getElementById('editVolume').value;
+            if (vol === '真题' || !ch) return '';
+            const key = `${vol}_${ch}`;
+            const pf = resolvePracticeData(vol, ch);
+            if (pf && pf.length > 0 && pf[0].includes('/')) {
+                return pf[0].split('/')[0] + '/';
+            }
+            return 'ch' + ch + '/';
         }
 
         // PDF 文件选择
@@ -2846,15 +2858,38 @@
 
             if (fileInput.files && fileInput.files.length > 0) {
                 pendingPracticeFiles = Array.from(fileInput.files);
-                const names = pendingPracticeFiles.map(f => f.name).join(', ');
+                const prefix = getChapterPrefix();
+                const names = pendingPracticeFiles.map(f => prefix + f.name).join(', ');
                 const totalSize = pendingPracticeFiles.reduce((s, f) => s + f.size, 0);
                 statusEl.style.display = 'block';
-                statusEl.textContent = `✅ 已选择 ${pendingPracticeFiles.length} 个文件: ${names} (${(totalSize / 1024).toFixed(1)} KB)`;
+                statusEl.textContent = `✅ 已选择 ${pendingPracticeFiles.length} 个文件 → 将存储为: ${names} (${(totalSize / 1024).toFixed(1)} KB)`;
 
-                // 自动填入文件名（逗号分隔）
-                nameEl.value = pendingPracticeFiles.map(f => f.name).join(',');
+                // 自动填入含路径前缀的文件名（逗号分隔）
+                nameEl.value = pendingPracticeFiles.map(f => prefix + f.name).join(',');
             } else {
                 pendingPracticeFiles = [];
+                statusEl.style.display = 'none';
+            }
+        }
+
+        // 参考答案文件选择
+        function onAnswerFilesSelected() {
+            const fileInput = document.getElementById('editAnswerUpload');
+            const statusEl = document.getElementById('answerFileStatus');
+            const nameEl = document.getElementById('editAnswerFile');
+
+            if (fileInput.files && fileInput.files.length > 0) {
+                pendingAnswerFiles = Array.from(fileInput.files);
+                const prefix = getChapterPrefix();
+                const names = pendingAnswerFiles.map(f => prefix + f.name).join(', ');
+                const totalSize = pendingAnswerFiles.reduce((s, f) => s + f.size, 0);
+                statusEl.style.display = 'block';
+                statusEl.textContent = `✅ 已选择 ${pendingAnswerFiles.length} 个文件 → 将存储为: ${names} (${(totalSize / 1024).toFixed(1)} KB)`;
+
+                // 自动填入含路径前缀的文件名（逗号分隔）
+                nameEl.value = pendingAnswerFiles.map(f => prefix + f.name).join(',');
+            } else {
+                pendingAnswerFiles = [];
                 statusEl.style.display = 'none';
             }
         }
@@ -2874,6 +2909,26 @@
             }
         }
 
+        // 检查 PDF 在 IndexedDB 中是否存在
+        async function checkPdfDbStatus(name) {
+            const el = document.getElementById('pdfDbStatus');
+            if (!name) { el.style.display = 'none'; return; }
+            try {
+                const entry = await dbGetFile(name);
+                if (entry) {
+                    el.style.display = 'block';
+                    const size = (entry.blob.size / 1024 / 1024).toFixed(1);
+                    el.style.color = 'var(--success)';
+                    el.textContent = `✅ PDF "${name}" (${size} MB) 已在数据库中就绪`;
+                } else {
+                    el.style.display = 'block';
+                    el.style.color = 'var(--text-muted)';
+                    el.textContent = `ℹ️ PDF "${name}" 尚未导入数据库，发布前需确保 book/ 目录中存在`;}
+            } catch (e) {
+                el.style.display = 'none';
+            }
+        }
+
         async function saveQuestion() {
             const id = editingId || document.getElementById('editId').value.trim();
             const title = document.getElementById('editTitle').value.trim();
@@ -2886,6 +2941,7 @@
             const pdfOffset = parseInt(document.getElementById('editPdfOffset').value) || 0;
             const pdfFileName = document.getElementById('editPdfFileName').value.trim() || `${volume}.pdf`;
             const practiceFile = document.getElementById('editPracticeFile').value.trim();
+            const answerFile = document.getElementById('editAnswerFile').value.trim();
             const difficulty = document.getElementById('editDifficulty').value;
             const tagsStr = document.getElementById('editTags').value.trim();
             const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
@@ -2913,22 +2969,45 @@
                 pendingPdfFile = null;
             }
 
-            // 如果有上传的练习数据文件，存储到 IndexedDB
+            // 如果有上传的练习数据文件，存储到 IndexedDB（使用带路径前缀的名称）
             if (pendingPracticeFiles.length > 0) {
                 try {
+                    const prefix = getChapterPrefix();
                     showToast(`正在存储 ${pendingPracticeFiles.length} 个练习数据文件...`, 'info');
                     for (const file of pendingPracticeFiles) {
+                        const storedName = prefix + file.name;
                         const mimeType = file.name.endsWith('.csv') ? 'text/csv'
                             : file.name.endsWith('.json') ? 'application/json'
                             : file.name.endsWith('.dat') || file.name.endsWith('.bin') ? 'application/octet-stream'
                             : 'text/plain';
-                        await dbPutFile(file.name, file, mimeType);
+                        await dbPutFile(storedName, file, mimeType);
                     }
                     showToast(`已存储 ${pendingPracticeFiles.length} 个练习数据文件`, 'success');
                 } catch (err) {
                     showToast('练习数据存储失败: ' + err.message, 'error');
                 }
                 pendingPracticeFiles = [];
+            }
+
+            // 如果有上传的参考答案文件，存储到 IndexedDB（使用带路径前缀的名称）
+            if (pendingAnswerFiles.length > 0) {
+                try {
+                    const prefix = getChapterPrefix();
+                    showToast(`正在存储 ${pendingAnswerFiles.length} 个参考答案文件...`, 'info');
+                    for (const file of pendingAnswerFiles) {
+                        const storedName = prefix + file.name;
+                        const mimeType = file.name.endsWith('.zip') ? 'application/zip'
+                            : file.name.endsWith('.txt') ? 'text/plain'
+                            : file.name.endsWith('.csv') ? 'text/csv'
+                            : file.name.endsWith('.json') ? 'application/json'
+                            : 'text/plain';
+                        await dbPutFile(storedName, file, mimeType);
+                    }
+                    showToast(`已存储 ${pendingAnswerFiles.length} 个参考答案文件`, 'success');
+                } catch (err) {
+                    showToast('参考答案存储失败: ' + err.message, 'error');
+                }
+                pendingAnswerFiles = [];
             }
 
             const questionData = {
@@ -2943,6 +3022,7 @@
                 pdfOffset,
                 pdfFileName,
                 practiceDataFile: practiceFile || '',
+                answerFile: answerFile || '',
                 tags,
                 difficulty
             };
@@ -2974,12 +3054,18 @@
             return questions.filter(q => q.practiceDataFile === dataFileName).length;
         }
 
+        function getAnswerFileRefCount(answerFileName) {
+            if (!answerFileName) return 0;
+            return questions.filter(q => q.answerFile === answerFileName).length;
+        }
+
         /** 列出所有被题目引用的文件（去重） */
         function getReferencedFiles() {
             const refs = new Set();
             questions.forEach(q => {
                 if (q.pdfFileName) refs.add(q.pdfFileName);
                 if (q.practiceDataFile) refs.add(q.practiceDataFile);
+                if (q.answerFile) refs.add(q.answerFile);
             });
             return refs;
         }
@@ -2995,7 +3081,7 @@
         function getFileReferences(fileName) {
             const ids = [];
             questions.forEach(q => {
-                if (q.pdfFileName === fileName || q.practiceDataFile === fileName) {
+                if (q.pdfFileName === fileName || q.practiceDataFile === fileName || q.answerFile === fileName) {
                     ids.push(q.id);
                 }
             });
@@ -3022,6 +3108,12 @@
                     orphanFiles.push(`📊 数据: ${target.practiceDataFile}`);
                 }
             }
+            if (target.answerFile) {
+                const refCount = getAnswerFileRefCount(target.answerFile);
+                if (refCount <= 1) {
+                    orphanFiles.push(`📝 答案: ${target.answerFile}`);
+                }
+            }
             if (orphanFiles.length > 0) {
                 extraMsg = `\n\n⚠️ 以下文件仅被本题引用，删除后将孤立：\n${orphanFiles.join('\n')}\n建议稍后使用「清理孤立文件」删除它们。`;
             }
@@ -3030,16 +3122,18 @@
 
             const deletedPdfFile = (getPDFReferenceCount(target.pdfFileName) <= 1) ? target.pdfFileName : null;
             const deletedDataFile = (getPracticeDataRefCount(target.practiceDataFile) <= 1) ? target.practiceDataFile : null;
+            const deletedAnswerFile = (getAnswerFileRefCount(target.answerFile) <= 1) ? target.answerFile : null;
 
             questions = questions.filter(q => q.id !== id);
             saveData();
             renderAll();
 
             // 异步清理孤立文件（如果用户同意）
-            if (deletedPdfFile || deletedDataFile) {
+            if (deletedPdfFile || deletedDataFile || deletedAnswerFile) {
                 const parts = [];
                 if (deletedPdfFile) parts.push(`PDF「${deletedPdfFile}」`);
                 if (deletedDataFile) parts.push(`数据文件「${deletedDataFile}」`);
+                if (deletedAnswerFile) parts.push(`参考答案「${deletedAnswerFile}」`);
                 const cleanMsg = parts.join('和');
 
                 // 用 setTimeout 避免 confirm 阻塞 IndexedDB 操作
@@ -3048,6 +3142,7 @@
                         try {
                             if (deletedPdfFile) await dbDeleteFile(deletedPdfFile);
                             if (deletedDataFile) await dbDeleteFile(deletedDataFile);
+                            if (deletedAnswerFile) await dbDeleteFile(deletedAnswerFile);
                             showToast(`已清理孤立文件: ${cleanMsg}`, 'success');
                         } catch (err) {
                             showToast('清理文件失败: ' + err.message, 'error');
@@ -3090,66 +3185,49 @@
                 // 1. 打包 questions.json
                 zip.file('questions.json', JSON.stringify(questions, null, 2));
 
-                // 2. 收集所有 PDF 文件名（去重）
+                // 2. 收集所有文件名（按逗号拆分以支持多文件）
                 const pdfSet = new Set();
                 const practiceSet = new Set();
+                const answerSet = new Set();
                 questions.forEach(q => {
                     if (q.pdfFileName) pdfSet.add(q.pdfFileName);
-                    if (q.practiceDataFile) practiceSet.add(q.practiceDataFile);
+                    if (q.practiceDataFile) {
+                        q.practiceDataFile.split(',').map(f => f.trim()).filter(Boolean).forEach(f => practiceSet.add(f));
+                    }
+                    if (q.answerFile) {
+                        q.answerFile.split(',').map(f => f.trim()).filter(Boolean).forEach(f => answerSet.add(f));
+                    }
                 });
 
-                // 3. 打包 IndexedDB 中的 PDF
-                let pdfCount = 0;
+                // 3. 打包 PDF：优先从 IndexedDB，回退到 book/ 文件系统
+                let pdfCount = 0, practiceCount = 0, answerCount = 0;
                 for (const pdfName of pdfSet) {
-                    try {
-                        const entry = await dbGetFile(pdfName);
-                        if (entry) {
-                            zip.folder('book').file(pdfName, entry.blob);
-                            pdfCount++;
-                        }
-                    } catch (e) { /* 不在 DB 中 */ }
+                    let blob = null;
+                    try { const e = await dbGetFile(pdfName); if (e) blob = e.blob; } catch (e) { /* 忽略 */ }
+                    if (!blob) {
+                        try { const r = await fetch(`book/${encPath(pdfName)}`); if (r.ok) blob = await r.blob(); } catch (e) { /* 忽略 */ }
+                    }
+                    if (blob) { zip.folder('book').file(pdfName, blob); pdfCount++; }
                 }
 
-                // 4. 打包练习数据文件
-                let practiceCount = 0;
+                // 4. 打包练习数据文件：优先 IndexedDB，回退到 practice-data/ 文件系统
                 for (const pfName of practiceSet) {
-                    try {
-                        const entry = await dbGetFile(pfName);
-                        if (entry) {
-                            zip.folder('practice-data').file(pfName, entry.blob);
-                            practiceCount++;
-                        }
-                    } catch (e) { /* 不在 DB 中 */ }
+                    let blob = null;
+                    try { const e = await dbGetFile(pfName); if (e) blob = e.blob; } catch (e) { /* 忽略 */ }
+                    if (!blob) {
+                        try { const r = await fetch(`practice-data/${encPath(pfName)}`); if (r.ok) blob = await r.blob(); } catch (e) { /* 忽略 */ }
+                    }
+                    if (blob) { zip.folder('practice-data').file(pfName, blob); practiceCount++; }
                 }
 
-                // 5. 尝试从 book/ 文件夹加载未在 DB 中的 PDF
-                for (const pdfName of pdfSet) {
-                    try {
-                        const hasFile = zip.file('book/' + pdfName);
-                        if (!hasFile) {
-                            const resp = await fetch(`book/${encodeURIComponent(pdfName)}`);
-                            if (resp.ok) {
-                                const blob = await resp.blob();
-                                zip.folder('book').file(pdfName, blob);
-                                pdfCount++;
-                            }
-                        }
-                    } catch (e) { /* 无法获取 */ }
-                }
-
-                // 6. 尝试从 practice-data/ 文件夹加载未在 DB 中的练习数据
-                for (const pfName of practiceSet) {
-                    try {
-                        const hasFile = zip.file('practice-data/' + pfName);
-                        if (!hasFile) {
-                            const resp = await fetch(`practice-data/${encodeURIComponent(pfName)}`);
-                            if (resp.ok) {
-                                const blob = await resp.blob();
-                                zip.folder('practice-data').file(pfName, blob);
-                                practiceCount++;
-                            }
-                        }
-                    } catch (e) { /* 无法获取 */ }
+                // 5. 打包参考答案文件：优先 IndexedDB，回退到 practice-data/ 文件系统
+                for (const ansName of answerSet) {
+                    let blob = null;
+                    try { const e = await dbGetFile(ansName); if (e) blob = e.blob; } catch (e) { /* 忽略 */ }
+                    if (!blob) {
+                        try { const r = await fetch(`practice-data/${encPath(ansName)}`); if (r.ok) blob = await r.blob(); } catch (e) { /* 忽略 */ }
+                    }
+                    if (blob) { zip.folder('practice-data').file(ansName, blob); answerCount++; }
                 }
 
                 // 生成 ZIP 并下载
@@ -3164,7 +3242,7 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                showToast(`完整包已导出 → ${questions.length} 题 + ${pdfCount} PDF + ${practiceCount} 数据文件`, 'success');
+                showToast(`完整包已导出 → ${questions.length} 题 + ${pdfCount} PDF + ${practiceCount} 数据 + ${answerCount} 答案`, 'success');
             } catch (err) {
                 showToast('导出失败: ' + err.message, 'error');
                 console.error(err);
@@ -3185,7 +3263,6 @@
                     if (!confirm(`即将导入 ${data.length} 道题目，这将覆盖当前所有数据。确定继续？`)) return;
 
                     questions = data;
-                    autoApplyPracticeData();                 // 自动关联练习数据
                     saveData();
                     renderAll();
                     showToast(`成功导入 ${data.length} 道题目`, 'success');
@@ -3230,15 +3307,16 @@
                 if (!Array.isArray(data)) throw new Error('数据格式错误');
                 console.log('  questions.json:', data.length, '题');
 
-                // 2. 统计文件
+                // 2. 统计文件（兼容正反斜杠路径）
                 const pdfFiles = [];
                 const practiceFiles = [];
                 zip.forEach((relativePath, zipEntry) => {
                     if (zipEntry.dir) return;
-                    if (relativePath.startsWith('book/') && relativePath.endsWith('.pdf')) {
-                        pdfFiles.push(relativePath.replace('book/', ''));
-                    } else if (relativePath.startsWith('practice-data/')) {
-                        practiceFiles.push(relativePath.replace('practice-data/', ''));
+                    const normPath = relativePath.replace(/\\/g, '/');
+                    if (normPath.startsWith('book/') && normPath.toLowerCase().endsWith('.pdf')) {
+                        pdfFiles.push(normPath.replace('book/', ''));
+                    } else if (normPath.startsWith('practice-data/')) {
+                        practiceFiles.push(normPath.replace('practice-data/', ''));
                     }
                 });
                 console.log('  PDF 文件:', pdfFiles.length, '个 →', pdfFiles);
@@ -3259,12 +3337,15 @@
                 const tPdf = performance.now();
                 for (const pdfName of pdfFiles) {
                     try {
-                        const entry = zip.file('book/' + pdfName);
+                        // 兼容正反斜杠路径查找
+                        let entry = zip.file('book/' + pdfName) || zip.file('book\\' + pdfName);
                         if (entry) {
                             const blob = await entry.async('blob');
                             console.log(`  📄 导入 PDF [${pdfImported + 1}/${pdfFiles.length}]:`, pdfName, '|', (blob.size / 1024 / 1024).toFixed(1) + 'MB');
                             await dbPutFile(pdfName, blob, 'application/pdf');
                             pdfImported++;
+                        } else {
+                            console.warn('  ⚠ PDF 未在 ZIP 中找到:', pdfName);
                         }
                     } catch (e) {
                         console.warn('无法导入 PDF:', pdfName, e);
@@ -3275,7 +3356,7 @@
                 let practiceImported = 0;
                 for (const pfName of practiceFiles) {
                     try {
-                        const entry = zip.file('practice-data/' + pfName);
+                        const entry = zip.file('practice-data/' + pfName) || zip.file('practice-data\\' + pfName);
                         if (entry) {
                             const blob = await entry.async('blob');
                             const ext = pfName.split('.').pop().toLowerCase();
@@ -3289,9 +3370,8 @@
                     }
                 }
 
-                // 5. 导入题目数据
+                // 5. 导入题目数据（ZIP 中的数据是导出时的真实状态，不运行自动映射以免覆盖）
                 questions = data;
-                autoApplyPracticeData();                     // 自动关联练习数据
                 saveData();
                 renderAll();
 
@@ -3322,6 +3402,7 @@
                 .then(data => {
                     questions = data;
                     autoApplyPracticeData();
+                    autoApplyAnswerData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
                     renderAll();
                     showToast('已恢复默认数据', 'success');
