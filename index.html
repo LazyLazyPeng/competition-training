@@ -1418,6 +1418,12 @@
                 } catch (e) {}
             }
 
+            // 如果用户手动清空过数据，不再重新从文件加载
+            if (localStorage.getItem('__dataCleared')) {
+                renderAll();
+                return;
+            }
+
             // 从 JSON 文件加载默认数据
             try {
                 const resp = await fetch(DEFAULT_DATA_URL);
@@ -3277,6 +3283,7 @@
                     if (!confirm(`即将导入 ${data.length} 道题目，这将覆盖当前所有数据。确定继续？`)) return;
 
                     questions = data;
+                    localStorage.removeItem('__dataCleared');
                     saveData();
                     renderAll();
                     showToast(`成功导入 ${data.length} 道题目`, 'success');
@@ -3387,6 +3394,7 @@
 
                 // 5. 导入题目数据（ZIP 中的数据是导出时的真实状态，不运行自动映射以免覆盖）
                 questions = data;
+                localStorage.removeItem('__dataCleared');
                 saveData();
                 renderAll();
 
@@ -3416,6 +3424,7 @@
                 .then(resp => resp.json())
                 .then(parsed => {
                     questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+                    localStorage.removeItem('__dataCleared');
                     autoApplyPracticeData();
                     autoApplyAnswerData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
@@ -3518,7 +3527,8 @@
 
             // 1. 清空题目
             questions = [];
-            saveData();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+            localStorage.setItem('__dataCleared', '1');
             console.log('  localStorage 已清空');
 
             // 2. 删除 IndexedDB 数据库
