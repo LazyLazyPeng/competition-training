@@ -1468,22 +1468,29 @@
                 <div class="preview-loading">⏳ 正在加载...</div>
             </div>
             <!-- 对比面板（默认隐藏） -->
-            <div id="comparePanel" style="display:none;flex:1;overflow:auto;padding:16px 20px;">
-                <div class="compare-grid">
-                    <div class="compare-col">
-                        <label>📖 参考答案</label>
-                        <div class="ref-text" id="compareRefText"></div>
-                    </div>
-                    <div class="compare-col">
-                        <label>✏️ 你的答案</label>
-                        <textarea id="compareUserInput" placeholder="在此粘贴你的计算结果，格式如：&#10;1 P6 的坐标 x:92295.323&#10;2 P6 的坐标 y:100520.233&#10;……"></textarea>
+            <div id="comparePanel" style="display:none;flex-direction:column;flex:1;overflow:hidden;padding:0;">
+                <!-- 两列输入区 -->
+                <div style="flex:1;overflow:auto;padding:16px 20px 0;">
+                    <div class="compare-grid">
+                        <div class="compare-col">
+                            <label>📖 参考答案</label>
+                            <div class="ref-text" id="compareRefText"></div>
+                        </div>
+                        <div class="compare-col">
+                            <label>✏️ 你的答案</label>
+                            <textarea id="compareUserInput" placeholder="在此粘贴你的计算结果，格式如：&#10;1 P6 的坐标 x:92295.323&#10;2 P6 的坐标 y:100520.233&#10;……"></textarea>
+                        </div>
                     </div>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:12px;">
-                    <button class="btn btn-primary" onclick="runCompare()">🔄 开始对比</button>
-                    <button class="btn btn-outline" onclick="exitCompareMode()">← 返回预览</button>
+                <!-- 操作栏（固定底部） -->
+                <div style="flex-shrink:0;padding:12px 20px;border-top:1px solid var(--border);background:var(--card-bg);display:flex;align-items:center;gap:10px;">
+                    <button class="btn btn-primary" onclick="runCompare()" style="padding:8px 20px;">🔄 开始对比</button>
+                    <button class="btn btn-outline btn-sm" onclick="exitCompareMode()" style="font-size:12px;">← 返回预览</button>
+                    <span style="flex:1;"></span>
+                    <span id="compareSummary" style="font-size:12px;color:var(--text-muted);"></span>
                 </div>
-                <div id="compareResult" class="compare-result" style="display:none;"></div>
+                <!-- 对比结果 -->
+                <div id="compareResult" class="compare-result" style="display:none;flex-shrink:0;max-height:320px;overflow:auto;margin:0 20px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg);"></div>
             </div>
         </div>
     </div>
@@ -2581,10 +2588,11 @@
             document.getElementById('previewBody').style.display = 'none';
             const panel = document.getElementById('comparePanel');
             panel.style.display = 'flex';
-            panel.style.flexDirection = 'column';
             document.getElementById('compareRefText').textContent = _compareRefText;
             document.getElementById('compareUserInput').value = '';
             document.getElementById('compareResult').style.display = 'none';
+            document.getElementById('compareResult').innerHTML = '';
+            document.getElementById('compareSummary').textContent = '';
         }
 
         /** 退出对比模式 */
@@ -2617,7 +2625,7 @@
             userLines.forEach(u => { userMap[u.num] = u; });
             const allNums = [...new Set([...Object.keys(refMap), ...Object.keys(userMap)].map(Number))].sort((a, b) => a - b);
 
-            let html = `<div style="display:grid;grid-template-columns:36px 1fr 1fr auto;gap:2px 10px;">
+            let html = `<div style="display:grid;grid-template-columns:36px 1fr 1fr auto;gap:2px 10px;padding:10px;">
                 <div style="font-weight:600;color:var(--text-muted);padding:2px 0;">#</div>
                 <div style="font-weight:600;color:var(--text-muted);padding:2px 0;">参考答案</div>
                 <div style="font-weight:600;color:var(--text-muted);padding:2px 0;">你的答案</div>
@@ -2644,10 +2652,13 @@
             html += '</div>';
             const total = allNums.length;
             const pct = total > 0 ? Math.round(matchCount / total * 100) : 0;
-            html += `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;">
-                ✅ 正确 ${matchCount} · ❌ 错误 ${mismatchCount} · ⚠️ 缺失 ${missingCount} · 共 ${total} 项 · 正确率 <strong>${pct}%</strong>
+            html += `<div style="padding:8px 10px;border-top:1px solid var(--border);font-size:13px;text-align:center;background:var(--card-bg);">
+                ✅ ${matchCount} 正确 · ❌ ${mismatchCount} 错误 · ⚠️ ${missingCount} 缺失 · 共 ${total} 项 · <strong>正确率 ${pct}%</strong>
             </div>`;
+            resultEl.style.display = 'block';
             resultEl.innerHTML = html;
+            // 更新底部摘要
+            document.getElementById('compareSummary').textContent = `正确 ${matchCount} · 错误 ${mismatchCount} · 缺失 ${missingCount} · 正确率 ${pct}%`;
         }
 
         // ============ 参考答案相关 ============
