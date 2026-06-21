@@ -1036,13 +1036,14 @@
             justify-content: center;
             flex-wrap: wrap;
         }
-        /* 版本号 */
-        .version-footer {
-            text-align: center;
+        /* 版本号 - 标题后小字 */
+        .version-tag {
             font-size: 11px;
             color: var(--text-muted);
-            padding: 12px 16px 20px;
-            opacity: 0.6;
+            opacity: 0.5;
+            margin-left: 6px;
+            font-weight: 400;
+            user-select: none;
         }
     </style>
 </head>
@@ -1053,6 +1054,7 @@
         <div class="navbar-brand" onclick="switchPage('browse')">
             <img src="https://www.swpu.edu.cn/images/public/blacklogo.png" alt="SWPU" style="height:36px;width:auto;">
             <span>西南石油大学测绘创新创业智能大赛训练系统</span>
+            <span class="version-tag">v<span id="versionDisplay"></span></span>
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
@@ -3595,6 +3597,5 @@
         const verEl = document.getElementById('versionDisplay');
         if (verEl) verEl.textContent = APP_VERSION;
     </script>
-    <div class="version-footer">v<span id="versionDisplay">2.0.0</span></div>
 </body>
 </html>
