@@ -2108,10 +2108,9 @@
                 }
             } catch (e) { /* DB 中不存在，继续尝试服务器 */ }
 
-            // 2. 回退：从服务器静态目录加载（支持任意格式）
+            // 2. 回退：从服务器静态目录加载（编码中文路径）
             try {
-                const filePath = `practice-data/${fullPath}`;
-                const resp = await fetch(filePath);
+                const resp = await fetch(`practice-data/${encPath(fullPath)}`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const blob = await resp.blob();
                 downloadBlob(blob, baseName);
@@ -2207,10 +2206,10 @@
                 }
             } catch (e) { /* 忽略 */ }
 
-            // 2. 回退：从服务器静态目录加载
+            // 2. 回退：从服务器静态目录加载（编码中文路径）
             if (!_previewBuffer) {
                 try {
-                    const resp = await fetch(`practice-data/${filePath}`);
+                    const resp = await fetch(`practice-data/${encPath(filePath)}`);
                     if (resp.ok) {
                         _previewBuffer = new Uint8Array(await resp.arrayBuffer());
                     }
@@ -2282,10 +2281,10 @@
                 }
             } catch (e) { /* 忽略 */ }
 
-            // 2. 尝试从 practice-data/ 目录加载
+            // 2. 尝试从 practice-data/ 目录加载（编码中文路径）
             if (!_previewBuffer) {
                 try {
-                    const resp = await fetch('practice-data/' + filePath);
+                    const resp = await fetch('practice-data/' + encPath(filePath));
                     if (resp.ok) {
                         _previewBuffer = new Uint8Array(await resp.arrayBuffer());
                     }
@@ -2402,11 +2401,7 @@
         // key 格式: volume_chapter，如 '上册_10'、'下册_34'
         // 文件通过 ZIP 导入时存入 IndexedDB，或从 practice-data/ 静态目录提供
         const PRACTICE_DATA_MAP = {
-            '真题_1': [
-                'point.txt',
-                '正式数据.txt',
-                'data.txt',
-            ],
+            // 真题使用题目ID作为独立目录，不在 MAP 中共享
             // ===== 上册 基础篇 (ch10-21) =====
             '上册_10': ['ch10/出租车数据1.txt', 'ch10/出租车数据2.txt'],
             '上册_11': ['ch11/测站坐标.txt'],
@@ -2818,17 +2813,24 @@
             document.getElementById('editFormCard').style.display = 'none';
         }
 
-        // 获取章节路径前缀（如 ch16/）
-        function getChapterPrefix() {
+        // 获取文件路径前缀，每个题目都有独立目录避免文件名冲突
+        // questionId 可选，传入时用题目 ID 作为目录名（编辑场景）
+        function getChapterPrefix(questionId) {
+            // 编辑已有题目时，用题目 ID 确保完全隔离
+            if (questionId) {
+                return questionId + '/';
+            }
             const ch = parseInt(document.getElementById('editChapter').value) || 0;
             const vol = document.getElementById('editVolume').value;
-            if (vol === '真题' || !ch) return '';
+            if (!vol || !ch) return '';
             const key = `${vol}_${ch}`;
+            // 优先从 MAP 中已配置的路径提取前缀（如 ch16/）
             const pf = resolvePracticeData(vol, ch);
             if (pf && pf.length > 0 && pf[0].includes('/')) {
                 return pf[0].split('/')[0] + '/';
             }
-            return 'ch' + ch + '/';
+            // 无 MAP 配置时，用 volume_chapter 作为唯一目录名
+            return key + '/';
         }
 
         // PDF 文件选择
@@ -2858,7 +2860,7 @@
 
             if (fileInput.files && fileInput.files.length > 0) {
                 pendingPracticeFiles = Array.from(fileInput.files);
-                const prefix = getChapterPrefix();
+                const prefix = getChapterPrefix(editingId);
                 const names = pendingPracticeFiles.map(f => prefix + f.name).join(', ');
                 const totalSize = pendingPracticeFiles.reduce((s, f) => s + f.size, 0);
                 statusEl.style.display = 'block';
@@ -2880,7 +2882,7 @@
 
             if (fileInput.files && fileInput.files.length > 0) {
                 pendingAnswerFiles = Array.from(fileInput.files);
-                const prefix = getChapterPrefix();
+                const prefix = getChapterPrefix(editingId);
                 const names = pendingAnswerFiles.map(f => prefix + f.name).join(', ');
                 const totalSize = pendingAnswerFiles.reduce((s, f) => s + f.size, 0);
                 statusEl.style.display = 'block';
@@ -2969,10 +2971,10 @@
                 pendingPdfFile = null;
             }
 
-            // 如果有上传的练习数据文件，存储到 IndexedDB（使用带路径前缀的名称）
+            // 如果有上传的练习数据文件，存储到 IndexedDB（使用题目ID作为目录名）
             if (pendingPracticeFiles.length > 0) {
                 try {
-                    const prefix = getChapterPrefix();
+                    const prefix = getChapterPrefix(editingId);
                     showToast(`正在存储 ${pendingPracticeFiles.length} 个练习数据文件...`, 'info');
                     for (const file of pendingPracticeFiles) {
                         const storedName = prefix + file.name;
@@ -2989,10 +2991,10 @@
                 pendingPracticeFiles = [];
             }
 
-            // 如果有上传的参考答案文件，存储到 IndexedDB（使用带路径前缀的名称）
+            // 如果有上传的参考答案文件，存储到 IndexedDB（使用题目ID作为目录名）
             if (pendingAnswerFiles.length > 0) {
                 try {
-                    const prefix = getChapterPrefix();
+                    const prefix = getChapterPrefix(editingId);
                     showToast(`正在存储 ${pendingAnswerFiles.length} 个参考答案文件...`, 'info');
                     for (const file of pendingAnswerFiles) {
                         const storedName = prefix + file.name;
