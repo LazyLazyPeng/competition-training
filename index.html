@@ -1405,16 +1405,6 @@
                     </div>
                 </div>
 
-                <!-- 练习完成按钮与统计 -->
-                <div class="detail-actions-card" style="border-color:var(--success);">
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <button class="btn btn-primary" onclick="recordPractice()" style="width:100%;padding:10px 16px;font-size:15px;">
-                            ✅ 标记练习完成
-                        </button>
-                        <div style="font-size:12px;color:var(--text-muted);text-align:center;" id="detailPracticeCount"></div>
-                    </div>
-                </div>
-
                 <!-- 练习数据文件列表 -->
                 <div class="detail-actions-card" id="detailDataListCard" style="display:none;">
                     <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1446,6 +1436,8 @@
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span id="detailPdfFileName">测绘程序设计（上册）.pdf</span>
                         <span class="pdf-timer-display" id="detailTimer"><span class="timer-icon">⏱</span> <span id="timerDigits">00<span class="timer-sep">:</span>00<span class="timer-sep">:</span>00</span></span>
+                        <button class="btn btn-primary btn-sm" onclick="recordPractice()" style="padding:3px 10px;font-size:12px;border-radius:6px;">✅</button>
+                        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap;" id="detailPracticeCount"></span>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span style="font-size:12px;color:var(--text-muted);" id="detailPdfPageTag">第 X 页</span>
