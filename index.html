@@ -1500,6 +1500,12 @@
             showToast(`✅ 已记录「${q.title}」第 ${stats[q.id].count} 次练习，用时 ${formatDuration(elapsed)}`, 'success');
         }
 
+        /** 计算有效练习次数（有 duration 的记录数） */
+        function calcValidPractices(records) {
+            if (!records || !Array.isArray(records)) return 0;
+            return records.filter(r => typeof r === 'object' && r.duration > 0).length;
+        }
+
         /** 计算题目的总练习时长（兼容旧版无 records 或纯数字 records） */
         function calcTotalDuration(records) {
             if (!records || !Array.isArray(records) || records.length === 0) return 0;
@@ -1509,6 +1515,23 @@
                 if (r.duration) total += r.duration;
             }
             return total;
+        }
+
+        /** 计算平均完成时间（秒） */
+        function calcAvgDuration(records) {
+            const valid = calcValidPractices(records);
+            if (valid === 0) return 0;
+            return Math.round(calcTotalDuration(records) / valid);
+        }
+
+        /** 计算最优（最快）完成时间（秒） */
+        function calcBestDuration(records) {
+            if (!records || !Array.isArray(records)) return 0;
+            let best = Infinity;
+            for (const r of records) {
+                if (typeof r === 'object' && r.duration > 0 && r.duration < best) best = r.duration;
+            }
+            return best === Infinity ? 0 : best;
         }
 
         /** 更新详情页练习次数和总时长显示 */
@@ -1550,25 +1573,31 @@
 
             // 排行榜
             html += '<div style="background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">';
-            html += '<div style="padding:16px;font-weight:600;font-size:15px;border-bottom:1px solid var(--border);">📈 练习排行榜</div>';
-            html += '<div style="padding:8px 16px;">';
+            html += '<div style="padding:12px 16px;font-weight:600;font-size:15px;border-bottom:1px solid var(--border);">📈 练习排行榜</div>';
+            // 表头
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);">
+                <span style="width:32px;text-align:center;">#</span>
+                <span style="flex:1;">题目</span>
+                <span style="width:70px;text-align:center;">累计</span>
+                <span style="width:70px;text-align:center;">平均</span>
+                <span style="width:70px;text-align:center;">最优</span>
+                <span style="width:44px;text-align:center;">次数</span>
+            </div>`;
             entries.forEach(([qid, s], i) => {
                 const rank = i + 1;
                 const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const maxCount = entries[0][1].count;
                 const barPct = maxCount > 0 ? (s.count / maxCount * 100) : 0;
-                const dur = calcTotalDuration(s.records);
-                const durText = dur > 0 ? formatDuration(dur) : '';
-                html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:${i < entries.length - 1 ? '1px solid var(--border)' : 'none'};">
+                const totalSec = calcTotalDuration(s.records);
+                const avgSec = calcAvgDuration(s.records);
+                const bestSec = calcBestDuration(s.records);
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:${i < entries.length - 1 ? '1px solid var(--border)' : 'none'};">
                     <span style="width:32px;text-align:center;font-weight:600;font-size:13px;">${medal}</span>
-                    <span style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                        ${s.title}
-                        ${durText ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">累计 ${durText}</span>` : ''}
-                    </span>
-                    <div style="width:120px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
-                        <div style="height:100%;width:${barPct}%;background:${rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : rank === 3 ? '#d97706' : 'var(--primary)'};border-radius:4px;transition:width 0.3s;"></div>
-                    </div>
-                    <span style="width:40px;text-align:right;font-weight:600;font-size:14px; font-variant-numeric:tabular-nums;">${s.count}次</span>
+                    <span style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</span>
+                    <span style="width:70px;text-align:center;font-size:12px;color:var(--text-secondary);">${totalSec > 0 ? formatDuration(totalSec) : '-'}</span>
+                    <span style="width:70px;text-align:center;font-size:12px;color:var(--text-secondary);">${avgSec > 0 ? formatDuration(avgSec) : '-'}</span>
+                    <span style="width:70px;text-align:center;font-size:12px;color:${bestSec > 0 ? '#10b981' : 'var(--text-secondary)'};font-weight:${bestSec > 0 ? '600' : '400'};">${bestSec > 0 ? formatDuration(bestSec) : '-'}</span>
+                    <span style="width:44px;text-align:right;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;">${s.count}</span>
                 </div>`;
             });
             html += '</div></div>';
