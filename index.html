@@ -1053,8 +1053,7 @@
     <nav class="navbar">
         <div class="navbar-brand" onclick="switchPage('browse')">
             <img src="https://www.swpu.edu.cn/images/public/blacklogo.png" alt="SWPU" style="height:36px;width:auto;">
-            <span>西南石油大学测绘创新创业智能大赛训练系统</span>
-            <span class="version-tag">v<span id="versionDisplay"></span></span>
+            <span class="version-tag" style="margin-left:0;">v<span id="versionDisplay"></span></span>
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
@@ -1100,7 +1099,6 @@
             <div class="random-section">
                 <h2>🎲 随机抽取竞赛题目</h2>
                 <p class="subtitle">点击按钮随机抽取一道题目，开始你的竞赛训练！</p>
-
                 <div class="random-options" id="randomPills">
                     <button class="filter-pill active" data-random-volume="all" onclick="setRandomVolume('all', this)">全部题目</button>
                 </div>
