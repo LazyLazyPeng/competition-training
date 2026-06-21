@@ -77,13 +77,13 @@
         }
 
         .nav-tab {
-            padding: 8px 20px;
-            border-radius: 6px;
+            padding: 10px 24px;
+            border-radius: 8px;
             border: none;
             background: transparent;
             color: var(--text-secondary);
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
             white-space: nowrap;
@@ -1033,7 +1033,7 @@
         @media (max-width: 768px) {
             .navbar { padding: 0 12px; }
             .navbar-brand { font-size: 16px; }
-            .nav-tab { padding: 6px 12px; font-size: 13px; }
+            .nav-tab { padding: 8px 16px; font-size: 14px; }
             .questions-grid { grid-template-columns: 1fr; }
             .stats-row { grid-template-columns: repeat(2, 1fr); }
             .random-result-card { min-width: auto; width: 100%; }
@@ -1116,15 +1116,6 @@
             justify-content: center;
             flex-wrap: wrap;
         }
-        /* 版本号 - 标题后小字 */
-        .version-tag {
-            font-size: 11px;
-            color: var(--text-muted);
-            opacity: 0.5;
-            margin-left: 6px;
-            font-weight: 400;
-            user-select: none;
-        }
     </style>
 </head>
 <body>
@@ -1132,8 +1123,7 @@
     <!-- ============ 顶部导航栏 ============ -->
     <nav class="navbar">
         <div class="navbar-brand" onclick="switchPage('browse')">
-            <img src="logo.svg" alt="SWPU" style="height:42px;width:auto;vertical-align:middle;">
-            <span class="version-tag" style="margin-left:0;">v<span id="versionDisplay"></span></span>
+            <img src="logo.png" alt="SWPU" style="height:42px;width:auto;vertical-align:middle;">
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
@@ -1510,6 +1500,11 @@
                 <div id="compareResult" class="compare-result" style="display:none;flex-shrink:0;max-height:320px;overflow:auto;margin:0 20px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg);"></div>
             </div>
         </div>
+    </div>
+
+    <!-- ============ 页脚 ============ -->
+    <div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);">
+        v<span id="versionDisplay"></span>
     </div>
 
     <script>
