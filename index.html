@@ -1513,7 +1513,7 @@
                 req.onblocked = () => {
                     console.warn('⏳ IndexedDB 打开被阻塞，正在等待...');
                 };
-                // 超时保护：3.5 秒后如果还没打开就切换到备用名称
+                // 超时保护：2 秒后如果还没打开就切换到备用名称
                 setTimeout(() => {
                     if (req.readyState === 'pending') {
                         const suffix = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
@@ -1522,7 +1522,7 @@
                         console.warn('  ⛔ 主数据库被阻塞，切换到备用:', dbEffectiveName);
                         reject(new Error('RETRY_NEW_DB'));
                     }
-                }, 3500);
+                }, 2000);
             });
             return dbReady;
         }
@@ -3624,17 +3624,31 @@
             localStorage.setItem('__dataCleared', '1');
             console.log('  localStorage 已清空');
 
-            // 2. 删除 IndexedDB（先关闭旧连接，避免自阻塞）
+            // 2. 清空 IndexedDB 数据（不删除数据库，避免 versionchange 阻塞）
             closeDB();
             try {
-                await new Promise((resolve, reject) => {
-                    const req = indexedDB.deleteDatabase(DB_BASE_NAME);
-                    req.onsuccess = () => { console.log('  IndexedDB 已删除'); resolve(); };
-                    req.onerror = () => { console.warn('  删除数据库失败（可能无权限，忽略）'); resolve(); };
-                    req.onblocked = () => { console.warn('  数据库删除被阻塞（有其他标签页打开）'); resolve(); };
+                const db = await new Promise((resolve, reject) => {
+                    const req = indexedDB.open(DB_BASE_NAME, DB_VERSION);
+                    req.onupgradeneeded = (e) => {
+                        const d = e.target.result;
+                        if (!d.objectStoreNames.contains('files')) {
+                            d.createObjectStore('files', { keyPath: 'name' });
+                        }
+                    };
+                    req.onsuccess = (e) => resolve(e.target.result);
+                    req.onerror = (e) => reject(e.target.error);
                 });
+                await new Promise((resolve, reject) => {
+                    const tx = db.transaction('files', 'readwrite');
+                    const store = tx.objectStore('files');
+                    store.clear();
+                    tx.oncomplete = () => { console.log('  IndexedDB 文件数据已清空'); resolve(); };
+                    tx.onerror = () => { console.warn('  清空文件数据失败（忽略）'); resolve(); };
+                });
+                db.close();
+                dbInstance = null;
             } catch (e) {
-                console.warn('  删除数据库出错:', e);
+                console.warn('  操作 IndexedDB 出错:', e);
             }
 
             renderAll();
