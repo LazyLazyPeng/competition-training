@@ -1475,14 +1475,20 @@
         }
 
         // ============ IndexedDB 存储（PDF + 练习数据） ============
-        const DB_NAME = 'competition_files_db';
+        const DB_BASE_NAME = 'competition_files_db';
         const DB_VERSION = 1;
         let dbReady = null;
+        let dbEffectiveName = DB_BASE_NAME; // 实际使用的数据库名，阻塞时自动切换
 
+        function getDBName() { return dbEffectiveName; }
+
+        /** 打开（或创建）IndexedDB，超时自动切换到备用名称 */
         function openDB() {
             if (dbReady) return dbReady;
             dbReady = new Promise((resolve, reject) => {
-                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                const name = getDBName();
+                console.log('  📂 打开 IndexedDB:', name);
+                const req = indexedDB.open(name, DB_VERSION);
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
                     if (!db.objectStoreNames.contains('files')) {
@@ -1491,12 +1497,37 @@
                 };
                 req.onsuccess = (e) => resolve(e.target.result);
                 req.onerror = (e) => reject(e.target.error);
+                req.onblocked = () => {
+                    console.warn('⏳ IndexedDB 打开被阻塞，正在等待...');
+                };
+                // 超时保护：3.5 秒后如果还没打开就切换到备用名称
+                setTimeout(() => {
+                    if (req.readyState === 'pending') {
+                        const suffix = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+                        dbEffectiveName = DB_BASE_NAME + '_' + suffix;
+                        dbReady = null;
+                        console.warn('  ⛔ 主数据库被阻塞，切换到备用:', dbEffectiveName);
+                        reject(new Error('RETRY_NEW_DB'));
+                    }
+                }, 3500);
             });
             return dbReady;
         }
 
+        /** 写入文件到 IndexedDB，遇到阻塞自动切库重试 */
         async function dbPutFile(name, blob, type) {
-            const db = await openDB();
+            let db;
+            try {
+                db = await openDB();
+            } catch (e) {
+                if (e.message === 'RETRY_NEW_DB') {
+                    // 切换到备用名称重试
+                    console.log('  重试备用数据库...');
+                    db = await openDB();
+                } else {
+                    throw e;
+                }
+            }
             console.log('💾 dbPutFile:', name, '| size:', (blob.size / 1024 / 1024).toFixed(1) + 'MB', '| type:', type);
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('files', 'readwrite');
@@ -1936,7 +1967,7 @@
 
                     let actionBtn = '';
                     if (isTxt) {
-                        actionBtn = `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewAnswerFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="预览参考答案" style="padding:2px 7px;font-size:13px;">👁 查看</button>`;
+                        actionBtn = `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();previewAnswerFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="预览参考答案" style="padding:2px 7px;font-size:13px;">👁</button>`;
                     }
                     const downloadBtn = `<button class="btn btn-outline btn-sm" onclick="downloadSingleAnswerFile('${q.id}','${f.replace(/'/g, "\\'")}')" title="下载参考答案" style="padding:2px 7px;font-size:13px;">⬇</button>`;
 
@@ -3330,6 +3361,14 @@
                 if (!Array.isArray(data)) throw new Error('数据格式错误');
                 console.log('  questions.json:', data.length, '题', parsed.version ? '(v' + parsed.version + ')' : '');
 
+                // 快速检查数据完整性
+                for (let i = 0; i < data.length; i++) {
+                    const q = data[i];
+                    if (!q || typeof q !== 'object') throw new Error('第 ' + (i + 1) + ' 题数据异常：非对象');
+                    if (typeof q.title !== 'string') throw new Error('题目 ID=' + q.id + ' 缺少 title 字段');
+                }
+                console.log('  ✅ 题目数据完整性检查通过');
+
                 // 2. 统计文件（兼容正反斜杠路径）
                 const pdfFiles = [];
                 const practiceFiles = [];
@@ -3342,29 +3381,29 @@
                         practiceFiles.push(normPath.replace('practice-data/', ''));
                     }
                 });
-                console.log('  PDF 文件:', pdfFiles.length, '个 →', pdfFiles);
-                console.log('  练习数据:', practiceFiles.length, '个');
+                console.log('  PDF 文件:', pdfFiles.length, '个');
+                console.log('  练习数据/答案:', practiceFiles.length, '个');
 
                 const parts = [];
                 parts.push(`即将导入完整包：`);
                 parts.push(`  📋 ${data.length} 道题目`);
                 if (pdfFiles.length > 0) parts.push(`  📄 ${pdfFiles.length} 个 PDF 文件`);
-                if (practiceFiles.length > 0) parts.push(`  📊 ${practiceFiles.length} 个练习数据文件`);
+                if (practiceFiles.length > 0) parts.push(`  📊 ${practiceFiles.length} 个数据/答案文件`);
                 parts.push('');
                 parts.push('导入后将覆盖当前题目数据，并存储文件到浏览器数据库。确定继续？');
 
                 if (!confirm(parts.join('\n'))) { event.target.value = ''; return; }
 
-                // 3. 导入 PDF 到 IndexedDB
+                // 3. 导入 PDF 到 IndexedDB（逐文件处理，防内存爆涨）
                 let pdfImported = 0;
                 const tPdf = performance.now();
-                for (const pdfName of pdfFiles) {
+                for (let i = 0; i < pdfFiles.length; i++) {
+                    const pdfName = pdfFiles[i];
                     try {
-                        // 兼容正反斜杠路径查找
                         let entry = zip.file('book/' + pdfName) || zip.file('book\\' + pdfName);
                         if (entry) {
                             const blob = await entry.async('blob');
-                            console.log(`  📄 导入 PDF [${pdfImported + 1}/${pdfFiles.length}]:`, pdfName, '|', (blob.size / 1024 / 1024).toFixed(1) + 'MB');
+                            console.log(`  📄 导入 PDF [${i + 1}/${pdfFiles.length}]:`, pdfName, '|', (blob.size / 1024 / 1024).toFixed(1) + 'MB');
                             await dbPutFile(pdfName, blob, 'application/pdf');
                             pdfImported++;
                         } else {
@@ -3374,10 +3413,13 @@
                         console.warn('无法导入 PDF:', pdfName, e);
                     }
                 }
+                console.log('  PDF 导入完成:', pdfImported, '/', pdfFiles.length, '耗时:', (performance.now() - tPdf).toFixed(0) + 'ms');
 
-                // 4. 导入练习数据到 IndexedDB
+                // 4. 导入练习数据/答案到 IndexedDB（逐文件处理）
                 let practiceImported = 0;
-                for (const pfName of practiceFiles) {
+                const tData = performance.now();
+                for (let i = 0; i < practiceFiles.length; i++) {
+                    const pfName = practiceFiles[i];
                     try {
                         const entry = zip.file('practice-data/' + pfName) || zip.file('practice-data\\' + pfName);
                         if (entry) {
@@ -3391,28 +3433,52 @@
                     } catch (e) {
                         console.warn('无法导入数据文件:', pfName, e);
                     }
+                    // 每 50 个文件更新一次进度提示
+                    if (i > 0 && i % 50 === 0) {
+                        showToast(`正在导入文件… ${i}/${practiceFiles.length}`, 'info');
+                    }
+                }
+                console.log('  数据文件导入完成:', practiceImported, '/', practiceFiles.length, '耗时:', (performance.now() - tData).toFixed(0) + 'ms');
+
+                // 5. 导入题目数据（隔离 saveData / renderAll 异常）
+                try {
+                    questions = data;
+                    localStorage.removeItem('__dataCleared');
+                    saveData();
+                    console.log('  ✅ 题目数据已保存到 localStorage，大小:', JSON.stringify(questions).length, 'bytes');
+                } catch (saveErr) {
+                    console.error('  ❌ saveData() 失败:', saveErr);
+                    showToast('保存题目数据到本地存储失败: ' + saveErr.message, 'error');
+                    console.groupEnd();
+                    event.target.value = '';
+                    return;
                 }
 
-                // 5. 导入题目数据（ZIP 中的数据是导出时的真实状态，不运行自动映射以免覆盖）
-                questions = data;
-                localStorage.removeItem('__dataCleared');
-                saveData();
-                renderAll();
+                try {
+                    renderAll();
+                    console.log('  ✅ 页面渲染完成');
+                } catch (renderErr) {
+                    console.error('  ❌ renderAll() 失败:', renderErr);
+                    showToast('页面渲染失败，请刷新重试: ' + renderErr.message, 'error');
+                    console.groupEnd();
+                    event.target.value = '';
+                    return;
+                }
 
                 const totalTime = (performance.now() - tLoad).toFixed(0);
                 console.log('  ⏱ 总耗时:', totalTime + 'ms');
-                console.log('  ✅ 导入完成 →', data.length + '题 +', pdfImported + 'PDF +', practiceImported + '数据');
+                console.log('  ✅ 导入完成 →', data.length + '题 +', pdfImported + 'PDF +', practiceImported + '数据/答案');
                 console.groupEnd();
 
-                showToast(`导入完成 → ${data.length} 题 + ${pdfImported} PDF + ${practiceImported} 数据文件`, 'success');
+                showToast(`导入完成 → ${data.length} 题 + ${pdfImported} PDF + ${practiceImported} 数据/答案文件`, 'success');
             } catch (err) {
                 console.error('❌ 导入失败:', err);
+                console.error('  Stack:', err.stack);
                 console.groupEnd();
-                showToast('导入失败: ' + err.message, 'error');
+                showToast('导入失败: ' + err.message + '（详见控制台）', 'error');
             }
 
             event.target.value = '';
-            // 同时清除导航栏导入按钮的文件选择
             const navInput = document.getElementById('navImportInput');
             if (navInput && navInput !== event.target) navInput.value = '';
         }
