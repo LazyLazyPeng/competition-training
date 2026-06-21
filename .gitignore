@@ -1,9 +1,8 @@
 # 导出文件
 *.zip
-# 数据文件
+# 数据文件（首次使用需导入 ZIP 包，数据会存到浏览器数据库）
 book/
 practice-data/
-jszip.min.js
 # 系统文件
 .DS_Store
 Thumbs.db
