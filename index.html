@@ -1473,48 +1473,52 @@
             localStorage.setItem(STATS_KEY, JSON.stringify(stats));
         }
 
-        /** 标记当前题目练习完成 */
+        /** 格式化秒数为 mm:ss 或 hh:mm:ss */
+        function formatDuration(totalSec) {
+            if (!totalSec || totalSec <= 0) return '';
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            if (h > 0) return `${h}时${m}分${s}秒`;
+            if (m > 0) return `${m}分${s}秒`;
+            return `${s}秒`;
+        }
+
+        /** 标记当前题目练习完成（记录本次耗时） */
         function recordPractice() {
             const q = questions.find(qq => qq.id === currentDetailId);
             if (!q) { showToast('请先打开一道题目', 'error'); return; }
+            if (!__detailTimerStart) { showToast('计时器未启动，请重新打开题目', 'error'); return; }
+            const elapsed = Math.floor((Date.now() - __detailTimerStart) / 1000);
             const stats = getPracticeStats();
             if (!stats[q.id]) stats[q.id] = { count: 0, title: q.title, records: [] };
             stats[q.id].count++;
-            stats[q.id].records.push(Date.now());
+            stats[q.id].records.push({ duration: elapsed });
             savePracticeStats(stats);
             updateDetailPracticeCount(q.id);
-            const now = new Date().toLocaleString('zh-CN', { hour12: false });
-            showToast(`✅ 已记录「${q.title}」第 ${stats[q.id].count} 次练习（${now}）`, 'success');
+            showToast(`✅ 已记录「${q.title}」第 ${stats[q.id].count} 次练习，用时 ${formatDuration(elapsed)}`, 'success');
         }
 
-        /** 格式化时间为友好字符串 */
-        function formatPracticeTime(ts) {
-            const d = new Date(ts);
-            const now = new Date();
-            const diff = now - d;
-            if (diff < 60000) return '刚刚';
-            if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
-            if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
-            if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
-            return d.toLocaleDateString('zh-CN');
+        /** 计算题目的总练习时长（兼容旧版纯数字 records） */
+        function calcTotalDuration(records) {
+            if (!records || records.length === 0) return 0;
+            let total = 0;
+            for (const r of records) {
+                if (typeof r === 'number') continue; // 旧版时间戳，忽略
+                if (r.duration) total += r.duration;
+            }
+            return total;
         }
 
-        /** 获取最后练习时间文本 */
-        function getLastPracticeText(entry) {
-            if (!entry || !entry.records || entry.records.length === 0) return '尚未练习';
-            const last = entry.records[entry.records.length - 1];
-            return `最后练习：${formatPracticeTime(last)}`;
-        }
-
-        /** 更新详情页练习次数显示 */
+        /** 更新详情页练习次数和总时长显示 */
         function updateDetailPracticeCount(qid) {
             const el = document.getElementById('detailPracticeCount');
             if (!el) return;
             const stats = getPracticeStats();
             const s = stats[qid];
             if (s && s.count > 0) {
-                const last = s.records && s.records.length > 0 ? formatPracticeTime(s.records[s.records.length - 1]) : '';
-                el.textContent = `🏋️ 已练习 ${s.count} 次${last ? ' · ' + last : ''}`;
+                const dur = calcTotalDuration(s.records);
+                el.textContent = `🏋️ 已练习 ${s.count} 次` + (dur > 0 ? ` · 累计 ${formatDuration(dur)}` : '');
             } else {
                 el.textContent = '🏋️ 尚未练习';
             }
@@ -1552,17 +1556,18 @@
                 const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
                 const maxCount = entries[0][1].count;
                 const barPct = maxCount > 0 ? (s.count / maxCount * 100) : 0;
-                const lastTime = s.records && s.records.length > 0 ? formatPracticeTime(s.records[s.records.length - 1]) : '';
+                const dur = calcTotalDuration(s.records);
+                const durText = dur > 0 ? formatDuration(dur) : '';
                 html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:${i < entries.length - 1 ? '1px solid var(--border)' : 'none'};">
                     <span style="width:32px;text-align:center;font-weight:600;font-size:13px;">${medal}</span>
                     <span style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                         ${s.title}
-                        <span style="font-size:11px;color:var(--text-muted);margin-left:6px;">${lastTime}</span>
+                        ${durText ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">累计 ${durText}</span>` : ''}
                     </span>
                     <div style="width:120px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
                         <div style="height:100%;width:${barPct}%;background:${rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : rank === 3 ? '#d97706' : 'var(--primary)'};border-radius:4px;transition:width 0.3s;"></div>
                     </div>
-                    <span style="width:40px;text-align:right;font-weight:600;font-size:14px;">${s.count}</span>
+                    <span style="width:40px;text-align:right;font-weight:600;font-size:14px; font-variant-numeric:tabular-nums;">${s.count}次</span>
                 </div>`;
             });
             html += '</div></div>';
