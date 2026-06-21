@@ -2145,7 +2145,7 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
         }
 
         /** 从详情页下载单个文件 */
@@ -3184,7 +3184,7 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
             showToast('JSON 已导出（不含 PDF）', 'success');
         }
 
@@ -3259,7 +3259,8 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                // 延迟释放 Blob URL，确保浏览器已开始下载
+                setTimeout(() => URL.revokeObjectURL(url), 2000);
 
                 showToast(`完整包已导出 → ${questions.length} 题 + ${pdfCount} PDF + ${practiceCount} 数据 + ${answerCount} 答案`, 'success');
             } catch (err) {
@@ -3476,7 +3477,7 @@
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
+                        setTimeout(() => URL.revokeObjectURL(url), 2000);
                         showToast(`已下载: ${downloadName}`, 'success');
                     } else {
                         showToast(`未找到文件: ${downloadName}`, 'error');
@@ -3520,8 +3521,8 @@
                 showToast('当前没有任何题目', 'info');
                 return;
             }
-            if (!confirm(`确定要删除全部 ${questions.length} 道题目以及所有关联的文件数据吗？\n\n⚠ 此操作不可恢复！\n\n将同时清空：\n  · ${questions.length} 道题目\n  · 所有 PDF 文件\n  · 所有练习数据文件`)) return;
-            if (!confirm(`⚠ 最终确认：删除全部题目和数据库中的所有文件？`)) return;
+            if (!confirm(`确定要删除全部 ${questions.length} 道题目以及所有数据库中的文件吗？\n\n⚠ 此操作不可恢复！`)) return;
+            if (!confirm(`⚠ 最终确认：删除所有题目和数据库文件？`)) return;
 
             console.group('🗑️ 清空全部数据');
 
@@ -3531,14 +3532,14 @@
             localStorage.setItem('__dataCleared', '1');
             console.log('  localStorage 已清空');
 
-            // 2. 删除 IndexedDB 数据库
+            // 2. 删除 IndexedDB（关闭旧连接后删除）
             dbReady = null;
             try {
                 await new Promise((resolve, reject) => {
                     const req = indexedDB.deleteDatabase(DB_NAME);
                     req.onsuccess = () => { console.log('  IndexedDB 已删除'); resolve(); };
-                    req.onerror = () => reject(req.error);
-                    req.onblocked = () => { console.warn('  IndexedDB 删除被阻塞，请关闭其他标签页'); resolve(); };
+                    req.onerror = () => { console.warn('  删除数据库失败（可能无权限，忽略）'); resolve(); };
+                    req.onblocked = () => { console.warn('  数据库删除被阻塞（有其他标签页打开）'); resolve(); };
                 });
             } catch (e) {
                 console.warn('  删除数据库出错:', e);
@@ -3546,7 +3547,6 @@
 
             renderAll();
             console.groupEnd();
-
             showToast('已清空全部题目和文件数据', 'success');
         }
 
