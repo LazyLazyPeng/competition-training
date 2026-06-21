@@ -1036,6 +1036,14 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+        /* 版本号 */
+        .version-footer {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 12px 16px 20px;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
@@ -1382,6 +1390,7 @@
         }
 
         // ============ 全局状态 ============
+        const APP_VERSION = '2.0.0';
         const STORAGE_KEY = 'competition_questions_v4';
         const DEFAULT_DATA_URL = 'questions.json';
 
@@ -1413,7 +1422,8 @@
             try {
                 const resp = await fetch(DEFAULT_DATA_URL);
                 if (resp.ok) {
-                    questions = await resp.json();
+                    let parsed = await resp.json();
+                    questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
                     autoApplyPracticeData();
                     autoApplyAnswerData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
@@ -3184,8 +3194,9 @@
             try {
                 const zip = new JSZip();
 
-                // 1. 打包 questions.json
-                zip.file('questions.json', JSON.stringify(questions, null, 2));
+                // 1. 打包 questions.json（含版本号）
+                const exportData = { version: APP_VERSION, questions };
+                zip.file('questions.json', JSON.stringify(exportData, null, 2));
 
                 // 2. 收集所有文件名（按逗号拆分以支持多文件）
                 const pdfSet = new Set();
@@ -3259,7 +3270,8 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = JSON.parse(e.target.result);
+                    let parsed = JSON.parse(e.target.result);
+                    const data = Array.isArray(parsed) ? parsed : (parsed.questions || []);
                     if (!Array.isArray(data)) throw new Error('数据格式错误');
 
                     if (!confirm(`即将导入 ${data.length} 道题目，这将覆盖当前所有数据。确定继续？`)) return;
@@ -3305,9 +3317,10 @@
                 }
 
                 const jsonText = await jsonFile.async('text');
-                const data = JSON.parse(jsonText);
+                let parsed = JSON.parse(jsonText);
+                const data = Array.isArray(parsed) ? parsed : (parsed.questions || []);
                 if (!Array.isArray(data)) throw new Error('数据格式错误');
-                console.log('  questions.json:', data.length, '题');
+                console.log('  questions.json:', data.length, '题', parsed.version ? '(v' + parsed.version + ')' : '');
 
                 // 2. 统计文件（兼容正反斜杠路径）
                 const pdfFiles = [];
@@ -3401,8 +3414,8 @@
             localStorage.removeItem(STORAGE_KEY);
             fetch(DEFAULT_DATA_URL)
                 .then(resp => resp.json())
-                .then(data => {
-                    questions = data;
+                .then(parsed => {
+                    questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
                     autoApplyPracticeData();
                     autoApplyAnswerData();
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
@@ -3578,6 +3591,10 @@
             if (bookPageEl) bookPageEl.addEventListener('input', autoCalcPdfPage);
             if (offsetEl) offsetEl.addEventListener('input', autoCalcPdfPage);
         });
+        // 显示版本号
+        const verEl = document.getElementById('versionDisplay');
+        if (verEl) verEl.textContent = APP_VERSION;
     </script>
+    <div class="version-footer">v<span id="versionDisplay">2.0.0</span></div>
 </body>
 </html>
