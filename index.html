@@ -3692,6 +3692,34 @@
         // ============ 初始化 ============
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
+
+            // 后台探测 IndexedDB 是否可用（独立连接，不影响主流程）
+            // 如果被阻塞，立即切换到备用名称，避免用户等待
+            setTimeout(() => {
+                const probeReq = indexedDB.open(getDBName(), DB_VERSION);
+                const t = setTimeout(() => {
+                    if (probeReq.readyState === 'pending') {
+                        const suffix = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
+                        dbEffectiveName = DB_BASE_NAME + '_' + suffix;
+                        closeDB(); // 清空缓存，后续 openDB() 使用新名称
+                        console.log('  ✅ IndexedDB 后台探测→阻塞，已切换到备用:', dbEffectiveName);
+                    }
+                }, 500); // 500ms 快速判断
+                probeReq.onsuccess = () => {
+                    clearTimeout(t);
+                    const db = probeReq.result;
+                    db.close(); // 探测用连接立即关闭
+                    console.log('  ✅ IndexedDB 后台探测成功');
+                };
+                probeReq.onerror = () => clearTimeout(t);
+                probeReq.onupgradeneeded = (e) => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains('files')) {
+                        d.createObjectStore('files', { keyPath: 'name' });
+                    }
+                };
+            }, 100);
+
             const volumeEl = document.getElementById('editVolume');
             if (volumeEl) volumeEl.addEventListener('change', syncPdfFileName);
 
