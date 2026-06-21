@@ -48,8 +48,7 @@
             height: 60px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 32px;
+            justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -77,13 +76,13 @@
         }
 
         .nav-tab {
-            padding: 10px 24px;
-            border-radius: 8px;
+            padding: 8px 20px;
+            border-radius: 6px;
             border: none;
             background: transparent;
             color: var(--text-secondary);
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
             white-space: nowrap;
@@ -1033,7 +1032,7 @@
         @media (max-width: 768px) {
             .navbar { padding: 0 12px; }
             .navbar-brand { font-size: 16px; }
-            .nav-tab { padding: 8px 16px; font-size: 14px; }
+            .nav-tab { padding: 6px 12px; font-size: 13px; }
             .questions-grid { grid-template-columns: 1fr; }
             .stats-row { grid-template-columns: repeat(2, 1fr); }
             .random-result-card { min-width: auto; width: 100%; }
@@ -1116,6 +1115,22 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+        /* 版本号 - 标题后小字 */
+        /* 底部版本号 - 固定在页面最下方 */
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            padding: 6px 0;
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.4;
+            user-select: none;
+            pointer-events: none;
+            z-index: 50;
+        }
     </style>
 </head>
 <body>
@@ -1123,7 +1138,7 @@
     <!-- ============ 顶部导航栏 ============ -->
     <nav class="navbar">
         <div class="navbar-brand" onclick="switchPage('browse')">
-            <img src="logo.png" alt="SWPU" style="height:42px;width:auto;vertical-align:middle;">
+            <img src="https://www.swpu.edu.cn/images/public/blacklogo.png" alt="SWPU" style="height:36px;width:auto;">
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
@@ -1500,11 +1515,6 @@
                 <div id="compareResult" class="compare-result" style="display:none;flex-shrink:0;max-height:320px;overflow:auto;margin:0 20px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg);"></div>
             </div>
         </div>
-    </div>
-
-    <!-- ============ 页脚 ============ -->
-    <div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);">
-        v<span id="versionDisplay"></span>
     </div>
 
     <script>
@@ -4073,9 +4083,11 @@
             if (bookPageEl) bookPageEl.addEventListener('input', autoCalcPdfPage);
             if (offsetEl) offsetEl.addEventListener('input', autoCalcPdfPage);
         });
-        // 显示版本号
-        const verEl = document.getElementById('versionDisplay');
-        if (verEl) verEl.textContent = APP_VERSION;
+    </script>
+    <!-- 底部版本号 -->
+    <div class="app-footer">v<span id="versionDisplay"></span></div>
+    <script>
+        document.getElementById('versionDisplay').textContent = APP_VERSION;
     </script>
 </body>
 </html>
