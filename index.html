@@ -1538,8 +1538,21 @@
             });
         }
 
+        /** 带重试的 IndexedDB 打开（遇阻塞自动切库） */
+        async function dbOpenWithRetry() {
+            try {
+                return await openDB();
+            } catch (e) {
+                if (e.message === 'RETRY_NEW_DB') {
+                    console.log('  重试备用数据库...');
+                    return await openDB();
+                }
+                throw e;
+            }
+        }
+
         async function dbGetFile(name) {
-            const db = await openDB();
+            const db = await dbOpenWithRetry();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('files', 'readonly');
                 const store = tx.objectStore('files');
@@ -1555,7 +1568,7 @@
         }
 
         async function dbGetAllFileNames() {
-            const db = await openDB();
+            const db = await dbOpenWithRetry();
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('files', 'readonly');
                 const store = tx.objectStore('files');
@@ -1566,7 +1579,7 @@
         }
 
         async function dbDeleteFile(name) {
-            const db = await openDB();
+            const db = await dbOpenWithRetry();
             console.log('🗑️ dbDeleteFile:', name);
             return new Promise((resolve, reject) => {
                 const tx = db.transaction('files', 'readwrite');
