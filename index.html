@@ -1492,6 +1492,7 @@
             const elapsed = Math.floor((Date.now() - __detailTimerStart) / 1000);
             const stats = getPracticeStats();
             if (!stats[q.id]) stats[q.id] = { count: 0, title: q.title, records: [] };
+            if (!stats[q.id].records) stats[q.id].records = []; // 兼容旧版数据
             stats[q.id].count++;
             stats[q.id].records.push({ duration: elapsed });
             savePracticeStats(stats);
@@ -1499,9 +1500,9 @@
             showToast(`✅ 已记录「${q.title}」第 ${stats[q.id].count} 次练习，用时 ${formatDuration(elapsed)}`, 'success');
         }
 
-        /** 计算题目的总练习时长（兼容旧版纯数字 records） */
+        /** 计算题目的总练习时长（兼容旧版无 records 或纯数字 records） */
         function calcTotalDuration(records) {
-            if (!records || records.length === 0) return 0;
+            if (!records || !Array.isArray(records) || records.length === 0) return 0;
             let total = 0;
             for (const r of records) {
                 if (typeof r === 'number') continue; // 旧版时间戳，忽略
