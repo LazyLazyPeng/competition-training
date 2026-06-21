@@ -1058,6 +1058,7 @@
         <div class="nav-tabs">
             <button class="nav-tab active" data-page="browse" onclick="switchPage('browse')">📚 题库浏览</button>
             <button class="nav-tab" data-page="random" onclick="switchPage('random')">🎲 随机抽题</button>
+            <button class="nav-tab" data-page="stats" onclick="switchPage('stats')">📊 练习统计</button>
             <button class="nav-tab" data-page="admin" onclick="switchPage('admin')">⚙️ 管理后台</button>
         </div>
         <div class="nav-actions">
@@ -1271,9 +1272,20 @@
             </div>
         </div>
 
+        <!-- ============ 页面4：练习统计 ============ -->
+        <div class="page" id="page-stats">
+            <div class="stats-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2>📊 练习统计</h2>
+                <button class="btn btn-outline btn-sm btn-danger-outline" onclick="clearPracticeStats()" title="清除所有练习统计数据">🗑️ 清除统计</button>
+            </div>
+            <div id="statsContent">
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">暂无练习记录</div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- ============ 页面4：题目详情 ============ -->
+    <!-- ============ 页面5：题目详情 ============ -->
     <div class="page" id="page-detail">
         <div class="detail-layout">
             <!-- 左侧信息栏 -->
@@ -1309,6 +1321,16 @@
                             <span class="meta-label">🏷️ 标签</span>
                             <span class="detail-tags-row" id="detailTags"></span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 练习完成按钮与统计 -->
+                <div class="detail-actions-card" style="border-color:var(--success);">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button class="btn btn-primary" onclick="recordPractice()" style="width:100%;padding:10px 16px;font-size:15px;">
+                            ✅ 标记练习完成
+                        </button>
+                        <div style="font-size:12px;color:var(--text-muted);text-align:center;" id="detailPracticeCount"></div>
                     </div>
                 </div>
 
@@ -1434,6 +1456,96 @@
 
         function saveData() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        }
+
+        // ============ 练习统计 ============
+        const STATS_KEY = 'competition_practice_stats';
+
+        /** 获取练习统计对象：{ qid: { count, title } } */
+        function getPracticeStats() {
+            try {
+                return JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+            } catch (e) { return {}; }
+        }
+
+        /** 保存练习统计 */
+        function savePracticeStats(stats) {
+            localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+        }
+
+        /** 标记当前题目练习完成 */
+        function recordPractice() {
+            const q = questions.find(qq => qq.id === currentDetailId);
+            if (!q) { showToast('请先打开一道题目', 'error'); return; }
+            const stats = getPracticeStats();
+            if (!stats[q.id]) stats[q.id] = { count: 0, title: q.title };
+            stats[q.id].count++;
+            savePracticeStats(stats);
+            updateDetailPracticeCount(q.id);
+            showToast(`✅ 已记录「${q.title}」第 ${stats[q.id].count} 次练习`, 'success');
+        }
+
+        /** 更新详情页练习次数显示 */
+        function updateDetailPracticeCount(qid) {
+            const el = document.getElementById('detailPracticeCount');
+            if (!el) return;
+            const stats = getPracticeStats();
+            const s = stats[qid];
+            el.textContent = s ? `🏋️ 已练习 ${s.count} 次` : '🏋️ 尚未练习';
+        }
+
+        /** 渲染统计页面 */
+        function renderStatsPage() {
+            const container = document.getElementById('statsContent');
+            const stats = getPracticeStats();
+            const entries = Object.entries(stats);
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:48px;margin-bottom:16px;">📊</div><h3 style="color:var(--text-muted);margin-bottom:8px;">暂无练习记录</h3><p style="color:var(--text-muted);font-size:14px;">打开一道题目，点击「标记练习完成」开始记录</p></div>';
+                return;
+            }
+
+            // 按次数降序排序
+            entries.sort((a, b) => b[1].count - a[1].count);
+            const totalPractices = entries.reduce((sum, [, v]) => sum + v.count, 0);
+
+            // 统计卡片
+            let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px;">
+                <div class="stat-card"><div class="stat-value">${totalPractices}</div><div class="stat-label">🏋️ 总练习次数</div></div>
+                <div class="stat-card"><div class="stat-value">${entries.length}</div><div class="stat-label">📋 已练习题目数</div></div>
+                <div class="stat-card"><div class="stat-value">${questions.length}</div><div class="stat-label">📚 总题目数</div></div>
+                ${entries[0] ? `<div class="stat-card" style="border-color:#f59e0b;"><div class="stat-value" style="color:#f59e0b;">${entries[0][1].count} 次</div><div class="stat-label">🏆 练习最多：${entries[0][1].title}</div></div>` : ''}
+            </div>`;
+
+            // 排行榜
+            html += '<div style="background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;">';
+            html += '<div style="padding:16px;font-weight:600;font-size:15px;border-bottom:1px solid var(--border);">📈 练习排行榜</div>';
+            html += '<div style="padding:8px 16px;">';
+            entries.forEach(([qid, s], i) => {
+                const rank = i + 1;
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const maxCount = entries[0][1].count;
+                const barPct = maxCount > 0 ? (s.count / maxCount * 100) : 0;
+                html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:${i < entries.length - 1 ? '1px solid var(--border)' : 'none'};">
+                    <span style="width:32px;text-align:center;font-weight:600;font-size:13px;">${medal}</span>
+                    <span style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.title}</span>
+                    <div style="width:120px;height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${barPct}%;background:${rank === 1 ? '#f59e0b' : rank === 2 ? '#94a3b8' : rank === 3 ? '#d97706' : 'var(--primary)'};border-radius:4px;transition:width 0.3s;"></div>
+                    </div>
+                    <span style="width:40px;text-align:right;font-weight:600;font-size:14px;">${s.count}</span>
+                </div>`;
+            });
+            html += '</div></div>';
+
+            container.innerHTML = html;
+        }
+
+        /** 清除练习统计 */
+        function clearPracticeStats() {
+            if (!confirm('确定清除所有练习统计数据吗？\n\n此操作不可恢复！')) return;
+            localStorage.removeItem(STATS_KEY);
+            renderStatsPage();
+            showToast('已清除练习统计数据', 'success');
         }
 
         // ============ IndexedDB 存储（PDF + 练习数据） ============
@@ -1644,6 +1756,7 @@
             if (page === 'browse') renderBrowse();
             if (page === 'random') renderRandom();
             if (page === 'admin') renderAdmin();
+            if (page === 'stats') renderStatsPage();
         }
 
         function getCurrentPage() {
@@ -1660,6 +1773,7 @@
             if (activePage.id === 'page-browse') renderBrowse();
             if (activePage.id === 'page-random') renderRandom();
             if (activePage.id === 'page-admin') renderAdmin();
+            if (activePage.id === 'page-stats') renderStatsPage();
         }
 
         // ============ 动态图标/颜色 ============
@@ -1892,6 +2006,9 @@
             } else {
                 tagsRow.style.display = 'none';
             }
+
+            // 练习次数显示
+            updateDetailPracticeCount(q.id);
 
             // --- 练习数据文件列表 ---
             const dataListCard = document.getElementById('detailDataListCard');
@@ -3573,7 +3690,7 @@
             questions = [];
             localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
             localStorage.setItem('__dataCleared', '1');
-            console.log('  localStorage 已清空');
+            console.log('  localStorage 已清空（练习统计保留）');
 
             // 2. 清空 IndexedDB 数据（不删除数据库，避免 versionchange 阻塞）
             closeDB();
