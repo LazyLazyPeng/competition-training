@@ -1392,7 +1392,6 @@
         // ============ 全局状态 ============
         const APP_VERSION = '2.0.0';
         const STORAGE_KEY = 'competition_questions_v4';
-        const DEFAULT_DATA_URL = 'questions.json';
 
         let questions = [];
         let currentFilter = 'all';
@@ -1403,71 +1402,34 @@
 
         // ============ 数据加载 ============
         async function loadData() {
-            // 优先从 localStorage 加载
+            // 优先从 localStorage 加载（由 ZIP 导入写入）
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
                 try {
                     questions = JSON.parse(stored);
                     if (questions.length > 0) {
-                        // 自动关联练习数据和参考答案（无提示）
-                        autoApplyPracticeData();
-                        autoApplyAnswerData();
+                        // 注意：不执行 autoApplyPracticeData / autoApplyAnswerData
+                        // 因为已导入的数据路径来自 ZIP，不应被自动映射覆盖
                         renderAll();
                         return;
                     }
-                } catch (e) {}
+                } catch (e) {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
             }
 
-            // 如果用户手动清空过数据，不再重新从文件加载
+            // 如果用户手动清空过数据，显示空引导页
             if (localStorage.getItem('__dataCleared')) {
+                questions = [];
                 renderAll();
                 return;
             }
 
-            // 从 JSON 文件加载默认数据
-            try {
-                const resp = await fetch(DEFAULT_DATA_URL);
-                if (resp.ok) {
-                    let parsed = await resp.json();
-                    questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
-                    autoApplyPracticeData();
-                    autoApplyAnswerData();
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
-                }
-            } catch (e) {
-                console.warn('⚠ 无法通过 fetch 加载 questions.json（可能是 file:// 协议限制），显示导入引导');
-                questions = [];
-            }
+            // 无任何数据，显示导入引导页
+            questions = [];
             renderAll();
-            
-            // 如果是 file:// 协议且无数据，替换为带引导的欢迎页
-            if (questions.length === 0 && window.location.protocol === 'file:') {
-                setTimeout(() => {
-                    const grid = document.getElementById('browseGrid');
-                    if (grid && questions.length === 0) {
-                        grid.innerHTML = `<div class="welcome-section" style="grid-column:1/-1;">
-                            <div class="welcome-icon">⚠️</div>
-                            <h2>需要本地 HTTP 服务器</h2>
-                            <p style="color:var(--danger);margin-bottom:12px;">
-                                检测到您通过 file:// 协议打开此页面。<br>
-                                由于浏览器安全限制，直接双击打开 <strong>无法加载数据</strong>。
-                            </p>
-                            <p style="margin-bottom:24px;color:var(--text-secondary);">
-                                <strong>解决方法（任选其一）：</strong><br>
-                                ① 双击运行 <code>启动服务器.bat</code>（推荐）<br>
-                                ② 点击下方按钮，导入完整 ZIP 包
-                            </p>
-                            <div class="welcome-actions">
-                                <label class="btn btn-primary" style="cursor:pointer;">
-                                    📤 导入题目包 (ZIP)
-                                    <input type="file" accept=".zip" style="display:none;" onchange="importFullPackage(event)">
-                                </label>
-                                <button class="btn btn-outline" onclick="switchPage('admin')">⚙️ 管理后台</button>
-                            </div>
-                        </div>`;
-                    }
-                }, 500);
-            }
+
+            // 引导页已经由 renderQuestionCards() 中的空数据逻辑显示
         }
 
         function saveData() {
@@ -3510,23 +3472,13 @@
         }
 
         function resetData() {
-            if (!confirm('确定要恢复为默认数据吗？当前所有修改将丢失。\n\n注意：IndexedDB 中的 PDF 不会自动删除。')) return;
+            if (!confirm('确定要清空所有题目数据吗？\n\n注意：IndexedDB 中的文件不会被删除，可前往管理后台清理孤立文件。')) return;
 
+            questions = [];
             localStorage.removeItem(STORAGE_KEY);
-            fetch(DEFAULT_DATA_URL)
-                .then(resp => resp.json())
-                .then(parsed => {
-                    questions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
-                    localStorage.removeItem('__dataCleared');
-                    autoApplyPracticeData();
-                    autoApplyAnswerData();
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
-                    renderAll();
-                    showToast('已恢复默认数据', 'success');
-                })
-                .catch(() => {
-                    showToast('恢复失败：无法加载默认数据', 'error');
-                });
+            localStorage.setItem('__dataCleared', '1');
+            renderAll();
+            showToast('已清空题目数据，请导入 ZIP 包', 'success');
         }
 
         // 管理数据库文件
